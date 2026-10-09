@@ -1,0 +1,787 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>工时记录 · 选择设计风格</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23111'/%3E%3Cpath d='M17 34l10 10 20-24' fill='none' stroke='%23f4b942' stroke-width='6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<style>
+:root{
+  --page-bg:#e7e3d9;
+  --page-ink:#171817;
+  --page-muted:#686a65;
+  --black:#111211;
+  --white:#fff;
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{
+  font-family:"PingFang SC","Microsoft YaHei",system-ui,-apple-system,sans-serif;
+  color:var(--page-ink);
+  background:
+    radial-gradient(circle at 18% -10%,#f4f1e8 0,#ebe7dd 42%,#d8d3c7 100%);
+  padding:34px 28px 120px;
+}
+.page-header{
+  max-width:1440px;margin:0 auto 28px;
+  display:flex;justify-content:space-between;align-items:flex-end;gap:24px;
+}
+.eyebrow{margin:0 0 9px;font-size:12px;letter-spacing:.18em;color:#77766f}
+h1{margin:0 0 10px;font-size:clamp(28px,4vw,46px);line-height:1.05;letter-spacing:-.045em;font-weight:780}
+.subtitle{margin:0;max-width:760px;color:var(--page-muted);font-size:14px;line-height:1.75}
+.header-note{
+  flex:0 0 auto;display:flex;align-items:center;gap:9px;
+  padding:11px 14px;border-radius:999px;background:rgba(255,255,255,.7);
+  border:1px solid rgba(0,0,0,.08);font-size:13px;color:#666862;white-space:nowrap;
+}
+.header-note span{
+  width:22px;height:10px;border-radius:99px;
+  background:linear-gradient(90deg,var(--black) 0 42%,#c9c3b8 42% 100%);
+}
+.gallery{
+  max-width:1440px;margin:0 auto;
+  display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:18px;
+}
+.option{
+  --surface:#ffffff;
+  --surface2:#f4f4f0;
+  --text:#151615;
+  --muted2:#686a65;
+  --accent:#222;
+  --on-accent:#fff;
+  --line2:#deded8;
+  --warning:#d6532f;
+  --radius:17px;
+  display:flex;flex-direction:column;
+  border-radius:22px;overflow:hidden;
+  background:rgba(255,255,255,.76);
+  border:1px solid rgba(0,0,0,.08);
+  box-shadow:0 14px 34px rgba(0,0,0,.08);
+  transition:transform .2s ease,box-shadow .2s ease;
+}
+.option:hover{transform:translateY(-3px);box-shadow:0 20px 42px rgba(0,0,0,.12)}
+.option.selected{outline:3px solid var(--accent);outline-offset:3px}
+.phone{
+  aspect-ratio:390/720;margin:10px;border-radius:22px;overflow:hidden;
+  position:relative;container-type:inline-size;
+  background:var(--surface);box-shadow:inset 0 0 0 1px var(--line2);
+}
+.screen{
+  position:absolute;inset:0;padding:10px 12px 0;
+  display:flex;flex-direction:column;justify-content:space-between;gap:3.2cqw;overflow:hidden;
+  font-size:4cqw;color:var(--text);background:var(--surface);
+}
+.statusbar{display:flex;justify-content:space-between;align-items:center;font-size:3.1cqw;opacity:.82}
+.screen-head{display:flex;justify-content:space-between;align-items:flex-start}
+.screen-head p{margin:0 0 1cqw;font-size:3.2cqw;color:var(--muted2)}
+.screen-head h2{margin:0;font-size:5.3cqw;line-height:1.08;letter-spacing:-.05em;font-weight:780}
+.state-chip{
+  border:1px solid var(--line2);border-radius:999px;
+  padding:1.6cqw 2.8cqw;background:var(--surface2);
+  color:var(--accent);font-size:2.9cqw;white-space:nowrap;
+}
+.timer-card{
+  position:relative;border:1px solid var(--line2);border-radius:var(--radius);
+  padding:4cqw 21cqw 4cqw 4cqw;background:var(--surface2);overflow:hidden;
+}
+.timer-label{margin:0 0 1.2cqw;font-size:3.1cqw;color:var(--muted2)}
+.timer{
+  font-size:8.8cqw;line-height:1;letter-spacing:-.12em;font-weight:780;
+  font-variant-numeric:tabular-nums;
+}
+.ring{
+  position:absolute;right:3.5cqw;top:3.5cqw;width:15cqw;aspect-ratio:1;
+  border-radius:50%;display:grid;place-items:center;
+  background:conic-gradient(var(--accent) 0 82%,var(--line2) 82% 100%);
+}
+.ring::before{content:"";position:absolute;inset:1.7cqw;border-radius:50%;background:var(--surface2)}
+.ring span{position:relative;font-size:2.8cqw;color:var(--muted2)}
+.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:2cqw;margin:0}
+.metrics div{border:1px solid var(--line2);border-radius:var(--radius);background:var(--surface2);padding:2.7cqw 2.8cqw}
+.metrics dt{font-size:2.7cqw;color:var(--muted2)}
+.metrics dd{margin:1cqw 0 0;font-size:4cqw;font-weight:760;font-variant-numeric:tabular-nums}
+.week-strip{display:grid;grid-template-columns:repeat(5,1fr);gap:2cqw}
+.week-strip span{
+  display:flex;flex-direction:column;align-items:center;gap:1cqw;
+  border:1px solid var(--line2);border-radius:var(--radius);
+  background:var(--surface2);padding:2.5cqw 0;
+  font-size:2.7cqw;color:var(--muted2);
+}
+.week-strip b{font-size:3cqw;color:var(--text)}
+.week-strip .today{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.week-strip .today b{color:var(--on-accent)}
+.week-strip .miss{border-color:var(--warning);color:var(--warning)}
+.week-strip .past{background:var(--line2)}
+.week-strip .hot{background:var(--accent);opacity:.72;color:var(--on-accent)}
+.week-strip .hot b{color:var(--on-accent)}
+.record-list{
+  overflow:hidden;border:1px solid var(--line2);
+  border-radius:var(--radius);background:var(--surface2);
+}
+.record-list div{
+  display:grid;grid-template-columns:24% 1fr auto;align-items:center;
+  gap:2cqw;padding:3.1cqw 3.3cqw;font-size:3.1cqw;color:var(--muted2);
+}
+.record-list div+div{border-top:1px solid var(--line2)}
+.record-list b{font-size:3.3cqw;color:var(--text);font-variant-numeric:tabular-nums}
+.record-list em{font-style:normal;font-size:2.8cqw;color:var(--accent)}
+.primary{
+  margin-top:0;height:12cqw;border-radius:var(--radius);
+  display:flex;align-items:center;justify-content:center;
+  background:var(--accent);color:var(--on-accent);
+  font-size:4.2cqw;font-weight:760;
+}
+.bottom-tabs{
+  height:14cqw;margin:0 -12px;padding:0 12px;
+  display:grid;grid-template-columns:repeat(3,1fr);align-items:center;text-align:center;
+  border-top:1px solid var(--line2);color:var(--muted2);font-size:3.2cqw;
+}
+.bottom-tabs .active{color:var(--accent);font-weight:760}
+.option-body{display:flex;flex-direction:column;gap:12px;padding:0 14px 16px}
+.option-title h2{margin:0 0 4px;font-size:18px;letter-spacing:-.02em}
+.option-title p{margin:0;font-size:12.5px;color:#686a65}
+.swatches{list-style:none;display:flex;gap:6px;margin:0;padding:0}
+.swatches li{width:22px;height:22px;border-radius:50%;border:1px solid rgba(0,0,0,.16);background:var(--swatch)}
+.notes{margin:0;display:grid;gap:7px;font-size:12.5px;line-height:1.55}
+.notes dt{font-weight:760;color:#333531}
+.notes dd{margin:0;color:#646661}
+.select-btn{
+  height:44px;border:1px solid #171817;border-radius:12px;
+  background:#171817;color:#fff;font-weight:760;font-size:14px;cursor:pointer;
+}
+.select-btn:hover{filter:brightness(1.18)}
+.choice-bar{
+  position:fixed;left:50%;bottom:24px;z-index:20;
+  width:min(680px,calc(100vw - 32px));
+  transform:translateX(-50%) translateY(130%);
+  display:flex;justify-content:space-between;align-items:center;gap:14px;
+  padding:14px 16px;border-radius:18px;
+  background:#111211;color:#fff;
+  box-shadow:0 22px 60px rgba(0,0,0,.28);
+  transition:transform .25s ease;
+}
+.choice-bar[hidden]{display:none}
+.choice-bar.show{transform:translateX(-50%) translateY(0)}
+.choice-bar b{display:block;font-size:15px;margin-bottom:2px}
+.choice-bar span{font-size:12px;color:#b8b8b3}
+.choice-actions{display:flex;gap:8px;flex:0 0 auto}
+.choice-secondary{
+  min-width:48px;min-height:44px;padding:0 13px;border-radius:10px;
+  border:1px solid #666;background:transparent;color:#fff;cursor:pointer;
+}
+.choice-secondary:hover{background:#2a2b2a}
+.toast{
+  position:fixed;left:50%;bottom:112px;z-index:30;
+  transform:translateX(-50%) translateY(12px);
+  background:#111;color:#fff;border-radius:999px;padding:10px 16px;
+  font-size:13px;opacity:0;pointer-events:none;transition:opacity .2s ease,transform .2s ease;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+@media (max-width:1280px){
+  .gallery{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;padding:2px 2px 18px}
+  .option{flex:0 0 280px;scroll-snap-align:start}
+}
+@media (max-width:700px){
+  body{padding:24px 16px 130px}
+  .page-header{display:block}
+  .header-note{display:none}
+  .gallery{display:flex;flex-direction:column;overflow:visible}
+  .option{flex:1;scroll-snap-align:none}
+  .phone{aspect-ratio:390/720}
+}
+@media (prefers-reduced-motion:reduce){
+  *{animation-duration:.01ms!important;transition-duration:.01ms!important;scroll-behavior:auto!important}
+}
+/* ===== 湖畔玻璃 ===== */
+.s-glass{
+  --surface:#d9eef8;
+  --surface2:rgba(255,255,255,.46);
+  --text:#12384d;
+  --muted2:#507890;
+  --accent:#2f7faf;
+  --on-accent:#fff;
+  --line2:rgba(255,255,255,.7);
+  --warning:#d85f4d;
+  --radius:18px;
+}
+.s-glass .phone{background:linear-gradient(160deg,#b7dff2,#e9f8fc 50%,#b8d7e9)}
+.s-glass .screen{background:radial-gradient(circle at 80% 8%,rgba(255,255,255,.62),transparent 34%)}
+.s-glass .timer-card,
+.s-glass .metrics div,
+.s-glass .week-strip span,
+.s-glass .state-chip{
+  background:rgba(255,255,255,.43);
+  border-color:rgba(255,255,255,.72);
+  box-shadow:0 8px 22px rgba(45,110,145,.14);
+  backdrop-filter:blur(14px);
+}
+.s-glass .ring::before{background:rgba(235,249,255,.86)}
+.s-glass .primary{
+  color:#12628c;border:1px solid rgba(255,255,255,.86);
+  background:linear-gradient(135deg,#fff,#d6f0ff);
+  box-shadow:0 10px 24px rgba(35,107,150,.24);
+}
+.s-glass .bottom-tabs{
+  background:rgba(255,255,255,.4);
+  border-top-color:rgba(255,255,255,.66);
+  backdrop-filter:blur(16px);
+}
+.s-glass .swatches li:nth-child(1){--swatch:#b7dff2}
+.s-glass .swatches li:nth-child(2){--swatch:#f7fbff}
+.s-glass .swatches li:nth-child(3){--swatch:#2f7faf}
+.s-glass .swatches li:nth-child(4){--swatch:#78b7e8}
+.s-glass .swatches li:nth-child(5){--swatch:#d85f4d}
+
+/* ===== 公告粗野 ===== */
+.s-brutal{
+  --surface:#f4e8d0;
+  --surface2:#fff4d9;
+  --text:#111;
+  --muted2:#4a4134;
+  --accent:#ff5a36;
+  --on-accent:#111;
+  --line2:#111;
+  --warning:#0057ff;
+  --radius:6px;
+}
+.s-brutal .phone{background:#f4e8d0}
+.s-brutal .screen{background:repeating-linear-gradient(0,transparent 0 31px,rgba(0,0,0,.055) 31px 32px)}
+.s-brutal .timer-card,
+.s-brutal .metrics div,
+.s-brutal .week-strip span,
+.s-brutal .state-chip{
+  border:2px solid #111;border-radius:5px;
+  box-shadow:4px 4px 0 #111;
+}
+.s-brutal .timer{font-family:Impact,"Arial Black","Microsoft YaHei",sans-serif;letter-spacing:-.04em}
+.s-brutal .ring{border:2px solid #111;background:conic-gradient(#ffd23f 0 82%,#fff 82% 100%)}
+.s-brutal .ring::before{inset:1.1cqw;background:#fff4d9;border:2px solid #111}
+.s-brutal .week-strip .past{background:#fff4d9}
+.s-brutal .week-strip .today{background:#ff5a36;color:#fff}
+.s-brutal .week-strip .today b{color:#fff}
+.s-brutal .week-strip .miss{background:#0066ff;color:#fff;border-color:#111}
+.s-brutal .week-strip .hot{background:#ffd23f;color:#111;opacity:1}
+.s-brutal .week-strip .hot b{color:#111}
+.s-brutal .primary{
+  border:2px solid #111;border-radius:5px;
+  box-shadow:5px 5px 0 #111;
+  background:#ffd23f;color:#111;
+}
+.s-brutal .bottom-tabs{border-top:2px solid #111;background:#f4e8d0}
+.s-brutal .swatches li:nth-child(1){--swatch:#f4e8d0}
+.s-brutal .swatches li:nth-child(2){--swatch:#111111}
+.s-brutal .swatches li:nth-child(3){--swatch:#ff5a36}
+.s-brutal .swatches li:nth-child(4){--swatch:#ffd23f}
+.s-brutal .swatches li:nth-child(5){--swatch:#0066ff}
+/* ===== 朱墨账本 ===== */
+.s-ledger{
+  --surface:#f3ead8;
+  --surface2:#fbf6e9;
+  --text:#211b16;
+  --muted2:#7b6a55;
+  --accent:#b33a2c;
+  --on-accent:#fff;
+  --line2:#c7b997;
+  --warning:#b33a2c;
+  --radius:4px;
+}
+.s-ledger .phone{background:#f3ead8}
+.s-ledger .screen{
+  font-family:"SimSun","Songti SC","Noto Serif SC",serif;
+  background:
+    linear-gradient(90deg,rgba(179,58,44,.12) 0 1px,transparent 1px),
+    repeating-linear-gradient(0,transparent 0 30px,rgba(92,72,48,.16) 30px 31px);
+}
+.s-ledger .statusbar{font-family:system-ui,sans-serif}
+.s-ledger .timer-card,
+.s-ledger .metrics div,
+.s-ledger .week-strip span{
+  border:1px solid #c7b997;border-radius:3px;
+  background:rgba(251,246,233,.78);
+}
+.s-ledger .timer{letter-spacing:-.04em}
+.s-ledger .ring{
+  border:2px solid #8c2c22;
+  background:conic-gradient(#b33a2c 0 82%,#c7b997 82% 100%);
+}
+.s-ledger .ring::before{background:#fbf6e9;border:1px solid #c7b997}
+.s-ledger .state-chip{
+  border-radius:2px;border:1px solid #8c2c22;
+  background:#b33a2c;color:#fff;
+}
+.s-ledger .week-strip .past{background:#fbf6e9}
+.s-ledger .week-strip .today{background:#2b2119;color:#fff}
+.s-ledger .week-strip .today b{color:#fff}
+.s-ledger .week-strip .miss{background:#b33a2c;color:#fff;border-color:#8c2c22}
+.s-ledger .week-strip .hot{background:#9b2f24;color:#fff;opacity:1}
+.s-ledger .week-strip .hot b{color:#fff}
+.s-ledger .primary{
+  border:1px solid #8c2c22;border-radius:3px;
+  background:#b33a2c;color:#fff;
+}
+.s-ledger .bottom-tabs{border-top:1px solid #c7b997;background:rgba(243,234,216,.9)}
+.s-ledger .swatches li:nth-child(1){--swatch:#f3ead8}
+.s-ledger .swatches li:nth-child(2){--swatch:#211b16}
+.s-ledger .swatches li:nth-child(3){--swatch:#b33a2c}
+.s-ledger .swatches li:nth-child(4){--swatch:#c7b997}
+.s-ledger .swatches li:nth-child(5){--swatch:#fbf6e9}
+
+/* ===== 绿色终端 ===== */
+.s-terminal{
+  --surface:#03130d;
+  --surface2:#08291b;
+  --text:#63ff95;
+  --muted2:#37b866;
+  --accent:#4dff88;
+  --on-accent:#03130d;
+  --line2:#1c6a40;
+  --warning:#ffe45c;
+  --radius:3px;
+}
+.s-terminal .screen{
+  font-family:"Cascadia Mono","Consolas",ui-monospace,monospace;
+  background:
+    repeating-linear-gradient(0,rgba(77,255,136,.05) 0 2px,transparent 2px 5px),
+    radial-gradient(circle at 50% 0,rgba(77,255,136,.16),transparent 42%);
+}
+.s-terminal .screen-head h2,
+.s-terminal .timer{text-shadow:0 0 10px rgba(77,255,136,.55)}
+.s-terminal .timer::after{content:"_";animation:blink 1s steps(1) infinite}
+.s-terminal .timer-card,
+.s-terminal .metrics div,
+.s-terminal .week-strip span,
+.s-terminal .state-chip{
+  border:1px solid #1c6a40;border-radius:3px;
+  background:rgba(8,41,27,.78);
+}
+.s-terminal .ring{
+  border:1px solid #4dff88;
+  background:conic-gradient(#4dff88 0 82%,#153f2a 82% 100%);
+}
+.s-terminal .ring::before{background:#08291b}
+.s-terminal .ring span{color:#4dff88}
+.s-terminal .week-strip .today{background:#4dff88;color:#03130d}
+.s-terminal .week-strip .today b{color:#03130d}
+.s-terminal .week-strip .miss{background:transparent;color:#ffe45c;border-color:#ffe45c}
+.s-terminal .week-strip .hot{background:#1c6a40;color:#4dff88;opacity:1}
+.s-terminal .week-strip .hot b{color:#4dff88}
+.s-terminal .primary{
+  border:1px solid #a6ffc2;border-radius:3px;
+  background:#4dff88;color:#03130d;
+  box-shadow:0 0 18px rgba(77,255,136,.35);
+}
+.s-terminal .bottom-tabs{border-top:1px solid #1c6a40;background:rgba(3,19,13,.92)}
+.s-terminal .swatches li:nth-child(1){--swatch:#03130d}
+.s-terminal .swatches li:nth-child(2){--swatch:#4dff88}
+.s-terminal .swatches li:nth-child(3){--swatch:#0b3b24}
+.s-terminal .swatches li:nth-child(4){--swatch:#a6ffc2}
+.s-terminal .swatches li:nth-child(5){--swatch:#ffe45c}
+
+/* ===== 瑞士排版 ===== */
+.s-swiss{
+  --surface:#fff;
+  --surface2:#f3f3f3;
+  --text:#111;
+  --muted2:#707070;
+  --accent:#e30613;
+  --on-accent:#fff;
+  --line2:#d8d8d8;
+  --warning:#e30613;
+  --radius:0;
+}
+.s-swiss .screen{
+  font-family:Helvetica,Arial,sans-serif;
+  background:linear-gradient(90deg,transparent 0 69%,#f3f3f3 69% 70%,transparent 70%);
+}
+.s-swiss .screen-head{padding-bottom:3cqw;border-bottom:2px solid #111}
+.s-swiss .timer-card{border:1px solid #111}
+.s-swiss .metrics div,
+.s-swiss .week-strip span{border:1px solid #111}
+.s-swiss .ring{background:conic-gradient(#111 0 82%,#e0e0e0 82% 100%)}
+.s-swiss .ring::before{background:#fff}
+.s-swiss .ring span{color:#111}
+.s-swiss .state-chip{background:#e30613;color:#fff;border-color:#e30613}
+.s-swiss .week-strip .today{background:#111;color:#fff}
+.s-swiss .week-strip .today b{color:#fff}
+.s-swiss .week-strip .miss{background:#e30613;color:#fff;border-color:#e30613}
+.s-swiss .week-strip .hot{background:#e30613;color:#fff;opacity:1}
+.s-swiss .week-strip .hot b{color:#fff}
+.s-swiss .primary{background:#e30613;color:#fff}
+.s-swiss .bottom-tabs{border-top:2px solid #111;background:#fff}
+.s-swiss .swatches li:nth-child(1){--swatch:#ffffff}
+.s-swiss .swatches li:nth-child(2){--swatch:#111111}
+.s-swiss .swatches li:nth-child(3){--swatch:#e30613}
+.s-swiss .swatches li:nth-child(4){--swatch:#d8d8d8}
+.s-swiss .swatches li:nth-child(5){--swatch:#707070}
+
+@keyframes blink{50%{opacity:0}}
+</style>
+</head>
+<body>
+<header class="page-header">
+  <div>
+    <p class="eyebrow">工时记录 App · 风格选择</p>
+    <h1>5 个新的设计方向</h1>
+    <p class="subtitle">同一组打卡数据、同一个主任务，仅改变视觉语言与信息组织。点击“选择此风格”，再按选中方向继续深化。</p>
+  </div>
+  <div class="header-note"><span></span>横向滑动查看全部</div>
+</header>
+
+<main class="gallery" id="gallery">
+  <!-- ===== 风格 1：湖畔玻璃 ===== -->
+  <article class="option s-glass" data-style-id="glass" data-style-name="湖畔玻璃">
+    <div class="phone">
+      <div class="screen">
+        <div class="statusbar"><span>9:41</span><span>● ● ●</span></div>
+        <header class="screen-head">
+          <div><p>周三</p><h2>10月7日</h2></div>
+          <div class="state-chip">上班中</div>
+        </header>
+        <section class="timer-card">
+          <p class="timer-label">今日已工作</p>
+          <div class="timer">06:42:18</div>
+          <div class="ring"><span>82%</span></div>
+        </section>
+        <dl class="metrics">
+          <div><dt>上班</dt><dd>08:58</dd></div>
+          <div><dt>标准</dt><dd>8h</dd></div>
+          <div><dt>还差</dt><dd>1:18</dd></div>
+        </dl>
+        <section class="week-strip">
+          <span class="past"><b>二</b>8.2</span>
+          <span class="today"><b>三</b>6.7</span>
+          <span class="miss"><b>四</b>缺卡</span>
+          <span><b>五</b>8.0</span>
+          <span class="hot"><b>六</b>10.1</span>
+        </section>
+        <section class="record-list">
+          <div><b>08:58</b><span>上班打卡</span><em>已确认</em></div>
+          <div><b>12:00</b><span>午休</span><em>1小时</em></div>
+          <div><b>18:00</b><span>预计下班</span><em>1:18</em></div>
+        </section>
+        <div class="primary" aria-hidden="true">下班打卡</div>
+        <nav class="bottom-tabs" aria-hidden="true"><span class="active">计时</span><span>月历</span><span>统计</span></nav>
+      </div>
+    </div>
+    <div class="option-body">
+      <div class="option-title"><h2>湖畔玻璃</h2><p>轻量、低压力的通勤界面</p></div>
+      <ul class="swatches"><li></li><li></li><li></li><li></li><li></li></ul>
+      <dl class="notes">
+        <dt>优势</dt><dd>半透明卡片和柔和水光降低打卡压力，大圆角适合日常高频打开。</dd>
+        <dt>风险</dt><dd>玻璃层与柔光过多时，工时数字、缺卡状态的对比会被削弱。</dd>
+      </dl>
+      <button class="select-btn" type="button">选择此风格</button>
+    </div>
+  </article>
+
+  <!-- ===== 风格 2：公告粗野 ===== -->
+  <article class="option s-brutal" data-style-id="brutal" data-style-name="公告粗野">
+    <div class="phone">
+      <div class="screen">
+        <div class="statusbar"><span>9:41</span><span>● ● ●</span></div>
+        <header class="screen-head">
+          <div><p>周三</p><h2>10月7日</h2></div>
+          <div class="state-chip">上班中</div>
+        </header>
+        <section class="timer-card">
+          <p class="timer-label">今日已工作</p>
+          <div class="timer">06:42:18</div>
+          <div class="ring"><span>82%</span></div>
+        </section>
+        <dl class="metrics">
+          <div><dt>上班</dt><dd>08:58</dd></div>
+          <div><dt>标准</dt><dd>8h</dd></div>
+          <div><dt>还差</dt><dd>1:18</dd></div>
+        </dl>
+        <section class="week-strip">
+          <span class="past"><b>二</b>8.2</span>
+          <span class="today"><b>三</b>6.7</span>
+          <span class="miss"><b>四</b>缺卡</span>
+          <span><b>五</b>8.0</span>
+          <span class="hot"><b>六</b>10.1</span>
+        </section>
+        <section class="record-list">
+          <div><b>08:58</b><span>上班打卡</span><em>已确认</em></div>
+          <div><b>12:00</b><span>午休</span><em>1小时</em></div>
+          <div><b>18:00</b><span>预计下班</span><em>1:18</em></div>
+        </section>
+        <div class="primary" aria-hidden="true">下班打卡</div>
+        <nav class="bottom-tabs" aria-hidden="true"><span class="active">计时</span><span>月历</span><span>统计</span></nav>
+      </div>
+    </div>
+    <div class="option-body">
+      <div class="option-title"><h2>公告粗野</h2><p>高对比、强反馈的动作界面</p></div>
+      <ul class="swatches"><li></li><li></li><li></li><li></li><li></li></ul>
+      <dl class="notes">
+        <dt>优势</dt><dd>粗描边、硬阴影和撞色块让主按钮、缺卡与当前状态一眼可见。</dd>
+        <dt>风险</dt><dd>视觉情绪强，若长期每日使用，密集粗线和高饱和色容易造成疲劳。</dd>
+      </dl>
+      <button class="select-btn" type="button">选择此风格</button>
+    </div>
+  </article>
+
+  <!-- ===== 风格 3：朱墨账本 ===== -->
+  <article class="option s-ledger" data-style-id="ledger" data-style-name="朱墨账本">
+    <div class="phone">
+      <div class="screen">
+        <div class="statusbar"><span>9:41</span><span>● ● ●</span></div>
+        <header class="screen-head">
+          <div><p>周三</p><h2>10月7日</h2></div>
+          <div class="state-chip">上班中</div>
+        </header>
+        <section class="timer-card">
+          <p class="timer-label">今日已工作</p>
+          <div class="timer">06:42:18</div>
+          <div class="ring"><span>82%</span></div>
+        </section>
+        <dl class="metrics">
+          <div><dt>上班</dt><dd>08:58</dd></div>
+          <div><dt>标准</dt><dd>8h</dd></div>
+          <div><dt>还差</dt><dd>1:18</dd></div>
+        </dl>
+        <section class="week-strip">
+          <span class="past"><b>二</b>8.2</span>
+          <span class="today"><b>三</b>6.7</span>
+          <span class="miss"><b>四</b>缺卡</span>
+          <span><b>五</b>8.0</span>
+          <span class="hot"><b>六</b>10.1</span>
+        </section>
+        <section class="record-list">
+          <div><b>08:58</b><span>上班打卡</span><em>已确认</em></div>
+          <div><b>12:00</b><span>午休</span><em>1小时</em></div>
+          <div><b>18:00</b><span>预计下班</span><em>1:18</em></div>
+        </section>
+        <div class="primary" aria-hidden="true">下班打卡</div>
+        <nav class="bottom-tabs" aria-hidden="true"><span class="active">计时</span><span>月历</span><span>统计</span></nav>
+      </div>
+    </div>
+    <div class="option-body">
+      <div class="option-title"><h2>朱墨账本</h2><p>郑重、可追溯的东方台账</p></div>
+      <ul class="swatches"><li></li><li></li><li></li><li></li><li></li></ul>
+      <dl class="notes">
+        <dt>优势</dt><dd>以台账分栏、宋体排印和朱砂印记组织记录，强调确认感与可追溯。</dd>
+        <dt>风险</dt><dd>统计数据变密后，衬线数字和装饰边框不如无衬线网格高效。</dd>
+      </dl>
+      <button class="select-btn" type="button">选择此风格</button>
+    </div>
+  </article>
+
+  <!-- ===== 风格 4：绿色终端 ===== -->
+  <article class="option s-terminal" data-style-id="terminal" data-style-name="绿色终端">
+    <div class="phone">
+      <div class="screen">
+        <div class="statusbar"><span>9:41</span><span>● ● ●</span></div>
+        <header class="screen-head">
+          <div><p>周三</p><h2>10月7日</h2></div>
+          <div class="state-chip">上班中</div>
+        </header>
+        <section class="timer-card">
+          <p class="timer-label">今日已工作</p>
+          <div class="timer">06:42:18</div>
+          <div class="ring"><span>82%</span></div>
+        </section>
+        <dl class="metrics">
+          <div><dt>上班</dt><dd>08:58</dd></div>
+          <div><dt>标准</dt><dd>8h</dd></div>
+          <div><dt>还差</dt><dd>1:18</dd></div>
+        </dl>
+        <section class="week-strip">
+          <span class="past"><b>二</b>8.2</span>
+          <span class="today"><b>三</b>6.7</span>
+          <span class="miss"><b>四</b>缺卡</span>
+          <span><b>五</b>8.0</span>
+          <span class="hot"><b>六</b>10.1</span>
+        </section>
+        <section class="record-list">
+          <div><b>08:58</b><span>上班打卡</span><em>已确认</em></div>
+          <div><b>12:00</b><span>午休</span><em>1小时</em></div>
+          <div><b>18:00</b><span>预计下班</span><em>1:18</em></div>
+        </section>
+        <div class="primary" aria-hidden="true">下班打卡</div>
+        <nav class="bottom-tabs" aria-hidden="true"><span class="active">计时</span><span>月历</span><span>统计</span></nav>
+      </div>
+    </div>
+    <div class="option-body">
+      <div class="option-title"><h2>绿色终端</h2><p>命令语感的夜间计时工具</p></div>
+      <ul class="swatches"><li></li><li></li><li></li><li></li><li></li></ul>
+      <dl class="notes">
+        <dt>优势</dt><dd>等宽数字、扫描线和命令行结构让计时状态明确，夜间使用辨识度高。</dd>
+        <dt>风险</dt><dd>受众较窄，黑底绿字和技术化语气对非工具型用户不够友好。</dd>
+      </dl>
+      <button class="select-btn" type="button">选择此风格</button>
+    </div>
+  </article>
+
+  <!-- ===== 风格 5：瑞士排版 ===== -->
+  <article class="option s-swiss" data-style-id="swiss" data-style-name="瑞士排版">
+    <div class="phone">
+      <div class="screen">
+        <div class="statusbar"><span>9:41</span><span>● ● ●</span></div>
+        <header class="screen-head">
+          <div><p>周三</p><h2>10月7日</h2></div>
+          <div class="state-chip">上班中</div>
+        </header>
+        <section class="timer-card">
+          <p class="timer-label">今日已工作</p>
+          <div class="timer">06:42:18</div>
+          <div class="ring"><span>82%</span></div>
+        </section>
+        <dl class="metrics">
+          <div><dt>上班</dt><dd>08:58</dd></div>
+          <div><dt>标准</dt><dd>8h</dd></div>
+          <div><dt>还差</dt><dd>1:18</dd></div>
+        </dl>
+        <section class="week-strip">
+          <span class="past"><b>二</b>8.2</span>
+          <span class="today"><b>三</b>6.7</span>
+          <span class="miss"><b>四</b>缺卡</span>
+          <span><b>五</b>8.0</span>
+          <span class="hot"><b>六</b>10.1</span>
+        </section>
+        <section class="record-list">
+          <div><b>08:58</b><span>上班打卡</span><em>已确认</em></div>
+          <div><b>12:00</b><span>午休</span><em>1小时</em></div>
+          <div><b>18:00</b><span>预计下班</span><em>1:18</em></div>
+        </section>
+        <div class="primary" aria-hidden="true">下班打卡</div>
+        <nav class="bottom-tabs" aria-hidden="true"><span class="active">计时</span><span>月历</span><span>统计</span></nav>
+      </div>
+    </div>
+    <div class="option-body">
+      <div class="option-title"><h2>瑞士排版</h2><p>以网格和超大数字建立秩序</p></div>
+      <ul class="swatches"><li></li><li></li><li></li><li></li><li></li></ul>
+      <dl class="notes">
+        <dt>优势</dt><dd>严格网格、克制配色和超大数字让信息扫描效率高，适合数据工具。</dd>
+        <dt>风险</dt><dd>视觉情绪较弱，品牌记忆点主要依赖版式比例与细节执行。</dd>
+      </dl>
+      <button class="select-btn" type="button">选择此风格</button>
+    </div>
+  </article>
+</main>
+
+<aside class="choice-bar" id="choiceBar" hidden>
+  <div><b id="choiceName">未选择</b><span>选择已保存在当前浏览器</span></div>
+  <div class="choice-actions">
+    <button class="choice-secondary" id="copyChoice" type="button">复制选择</button>
+    <button class="choice-secondary" id="clearChoice" type="button">清除</button>
+  </div>
+</aside>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function(){
+  var STORAGE_KEY='worktime-design-style-choice';
+  var options=Array.prototype.slice.call(document.querySelectorAll('.option'));
+  var bar=document.getElementById('choiceBar');
+  var choiceName=document.getElementById('choiceName');
+  var copyButton=document.getElementById('copyChoice');
+  var clearButton=document.getElementById('clearChoice');
+  var toast=document.getElementById('toast');
+  var toastTimer=null;
+  var currentChoice=null;
+
+  function showToast(message){
+    toast.textContent=message;
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer=setTimeout(function(){toast.classList.remove('show');},1800);
+  }
+
+  function resetButtons(){
+    options.forEach(function(option){
+      option.classList.remove('selected');
+      option.querySelector('.select-btn').textContent='选择此风格';
+    });
+  }
+
+  function showBar(){
+    if(bar.hidden){
+      bar.hidden=false;
+      requestAnimationFrame(function(){bar.classList.add('show');});
+    } else {
+      bar.classList.add('show');
+    }
+  }
+
+  function hideBar(){
+    bar.classList.remove('show');
+    setTimeout(function(){bar.hidden=true;},250);
+  }
+
+  function selectStyle(id,message){
+    var option=options.find(function(item){return item.dataset.styleId===id;});
+    if(!option) return false;
+    resetButtons();
+    option.classList.add('selected');
+    option.querySelector('.select-btn').textContent='已选择此风格';
+    currentChoice={
+      id:option.dataset.styleId,
+      name:option.dataset.styleName,
+      time:new Date().toISOString()
+    };
+    choiceName.textContent=currentChoice.name;
+    try{localStorage.setItem(STORAGE_KEY,JSON.stringify(currentChoice));}catch(error){}
+    if(history.replaceState){history.replaceState(null,'','#'+currentChoice.id);}
+    showBar();
+    if(message) showToast(message);
+    return true;
+  }
+
+  function clearChoice(){
+    currentChoice=null;
+    resetButtons();
+    hideBar();
+    try{localStorage.removeItem(STORAGE_KEY);}catch(error){}
+    if(history.replaceState){history.replaceState(null,'',location.pathname+location.search);}
+    showToast('已清除选择');
+  }
+
+  function copyText(text){
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text)
+        .then(function(){showToast('已复制选择');})
+        .catch(function(){fallbackCopy(text);});
+    } else {
+      fallbackCopy(text);
+    }
+  }
+
+  function fallbackCopy(text){
+    var textarea=document.createElement('textarea');
+    textarea.value=text;
+    textarea.setAttribute('readonly','');
+    textarea.style.position='fixed';
+    textarea.style.opacity='0';
+    document.body.appendChild(textarea);
+    textarea.select();
+    try{document.execCommand('copy');showToast('已复制选择');}
+    catch(error){showToast('复制失败，请直接记下风格名称');}
+    document.body.removeChild(textarea);
+  }
+
+  options.forEach(function(option){
+    option.querySelector('.select-btn').addEventListener('click',function(){
+      selectStyle(option.dataset.styleId,'已选择“'+option.dataset.styleName+'”');
+    });
+  });
+
+  copyButton.addEventListener('click',function(){
+    if(currentChoice) copyText('我选择：'+currentChoice.name);
+  });
+
+  clearButton.addEventListener('click',clearChoice);
+
+  function init(){
+    var saved=null;
+    try{saved=JSON.parse(localStorage.getItem(STORAGE_KEY));}catch(error){saved=null;}
+    if(saved&&saved.id&&selectStyle(saved.id,false)) return;
+    var hashId=location.hash.replace('#','');
+    if(hashId) selectStyle(hashId,false);
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>

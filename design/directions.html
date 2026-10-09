@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>工时记录 · 方向对比</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:"PingFang SC","Microsoft YaHei",system-ui,sans-serif;background:#e9e7e2;color:#222;padding:32px 24px 64px}
+  h1{font-size:22px;font-weight:600;margin-bottom:6px}
+  .lead{color:#666;font-size:14px;margin-bottom:28px}
+  .row{display:flex;gap:36px;flex-wrap:wrap;justify-content:center}
+  .col{width:360px}
+  .pair{display:flex;flex-direction:column;gap:18px}
+  .phone{width:360px;height:640px;border-radius:28px;overflow:hidden;position:relative;box-shadow:0 18px 40px rgba(0,0,0,.18),0 0 0 8px #1b1b1b}
+  .phone.short{height:520px}
+  .card{margin-top:20px;background:#fff;border-radius:14px;padding:16px 18px;font-size:13px;line-height:1.7}
+  .card h2{font-size:16px;margin-bottom:6px}
+  .card dt{color:#888;float:left;width:44px}
+  .card dd{margin-left:48px}
+  .tabs{position:absolute;left:0;right:0;bottom:0;height:60px;display:flex;justify-content:space-around;align-items:center;font-size:13px}
+  .cal{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+  .cal span{aspect-ratio:1/1;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:11px;border-radius:8px}
+  .cal b{font-size:13px;font-weight:600}
+  .week{display:grid;grid-template-columns:repeat(7,1fr);text-align:center;font-size:11px;margin-bottom:6px}
+  @keyframes ring{0%{transform:scale(1);opacity:.55}100%{transform:scale(1.35);opacity:0}}
+  .btn{transition:transform .12s ease}
+  .btn:active{transform:scale(.94)}
+
+  /* A 纸质工时本 */
+  .a{background:#f5efe0;background-image:repeating-linear-gradient(#f5efe0 0 31px,#d9cfb8 31px 32px);color:#26355e;font-family:"KaiTi","STKaiti","Kaiti SC",serif}
+  .a::before{content:"";position:absolute;left:44px;top:0;bottom:0;width:1px;background:#d98c7a}
+  .a .pad{padding:40px 24px 0 60px}
+  .a .date{font-size:18px}
+  .a .big{font-size:64px;line-height:1.1;margin:18px 0 4px;letter-spacing:1px}
+  .a .sub{font-size:15px;color:#5a6688}
+  .a .lines{margin-top:28px;font-size:18px;line-height:32px}
+  .a .lines u{text-decoration:none;border-bottom:1.5px solid #26355e;padding:0 6px}
+  .a .btn{position:absolute;left:60px;right:24px;bottom:84px;height:64px;border:2.5px solid #26355e;border-radius:6px;background:transparent;font:inherit;font-size:22px;color:#26355e;transform:rotate(-.6deg)}
+  .a .tabs{border-top:1.5px dashed #b9ad92;background:#efe7d3;color:#7a7360}
+  .a .tabs .on{color:#26355e;font-weight:700}
+  .a .cal span{background:transparent;border:1px solid #d3c7ab;border-radius:3px}
+  .a .cal .miss{border-color:#c0573f;color:#c0573f}
+  .a .cal .ot{background:rgba(38,53,94,.08)}
+
+  /* B 仪表计时 */
+  .b{background:#0f1115;color:#e8e6e1}
+  .b .pad{padding:44px 26px 0}
+  .b .date{font-size:13px;color:#8a8d94;letter-spacing:2px}
+  .b .state{display:inline-flex;align-items:center;gap:6px;margin-top:22px;font-size:13px;color:#ffb020}
+  .b .state i{width:8px;height:8px;border-radius:50%;background:#ffb020;box-shadow:0 0 10px #ffb020}
+  .b .big{font-family:"Cascadia Mono","Consolas",ui-monospace,monospace;font-variant-numeric:tabular-nums;font-size:68px;font-weight:300;letter-spacing:-2px;margin-top:6px}
+  .b .meta{display:flex;gap:28px;margin-top:14px;font-family:"Consolas",monospace;font-size:14px;color:#8a8d94}
+  .b .meta em{display:block;font-style:normal;color:#e8e6e1;font-size:18px}
+  .b .bar{margin-top:26px;height:4px;background:#23262d;border-radius:2px;overflow:hidden}
+  .b .bar div{width:78%;height:100%;background:#ffb020}
+  .b .wrap{position:absolute;left:50%;bottom:98px;transform:translateX(-50%);width:132px;height:132px}
+  .b .wrap::before{content:"";position:absolute;inset:0;border-radius:50%;border:2px solid #ffb020;animation:ring 1.8s ease-out infinite}
+  .b .btn{position:absolute;inset:0;border-radius:50%;border:none;background:#ffb020;color:#0f1115;font-size:18px;font-weight:700}
+  .b .tabs{background:#16191f;color:#5d6068}
+  .b .tabs .on{color:#ffb020}
+  .b .cal span{background:#181b21;color:#8a8d94}
+  .b .cal .h1{background:#3a2e14;color:#e8e6e1}
+  .b .cal .h2{background:#7a5a17;color:#fff}
+  .b .cal .h3{background:#ffb020;color:#0f1115}
+  .b .cal .miss{box-shadow:inset 0 0 0 1.5px #ff5a4e;color:#ff5a4e}
+
+  /* C 安静日历 */
+  .c{background:#fafaf7;color:#2a2f2b}
+  .c .pad{padding:40px 22px 0}
+  .c .top{display:flex;justify-content:space-between;align-items:flex-end}
+  .c .date{font-size:24px;font-weight:600}
+  .c .date small{display:block;font-size:13px;color:#8b918c;font-weight:400}
+  .c .today{text-align:right;font-size:13px;color:#8b918c}
+  .c .today b{display:block;font-size:26px;color:#3d7a5a;font-weight:600;font-variant-numeric:tabular-nums}
+  .c .cal{margin-top:20px}
+  .c .cal span{background:#eef0ea;color:#8b918c}
+  .c .cal .h1{background:#d4e6da;color:#2a2f2b}
+  .c .cal .h2{background:#9fcab0;color:#1d3a2a}
+  .c .cal .h3{background:#3d7a5a;color:#fff}
+  .c .cal .miss{background:#fff;box-shadow:inset 0 0 0 1.5px #d9822b;color:#d9822b}
+  .c .cal .td{outline:2px solid #2a2f2b;outline-offset:1px}
+  .c .btn{position:absolute;left:22px;right:22px;bottom:80px;height:58px;border:none;border-radius:16px;background:#2a2f2b;color:#fff;font-size:17px;font-weight:600}
+  .c .tabs{background:#fafaf7;border-top:1px solid #e6e8e2;color:#a2a8a3}
+  .c .tabs .on{color:#2a2f2b;font-weight:600}
+  .c .week{color:#a2a8a3}
+</style>
+</head>
+<body>
+<h1>工时记录 · 三个方向</h1>
+<p class="lead">每个方向都放了打卡首屏和月历两屏。选一个方向，并说说具体喜欢哪里、不喜欢哪里。按钮可以按下去试试手感。</p>
+
+<div class="row">
+
+<!-- A -->
+<div class="col"><div class="pair">
+  <div class="phone a"><div class="pad">
+    <div class="date">十月七日 · 周三</div>
+    <div class="big">6时42分</div>
+    <div class="sub">今天已经干了这么久</div>
+    <div class="lines">上班 <u>08:58</u><br>下班 <u>　　　</u><br>午休 <u>1 小时</u></div>
+  </div>
+  <button class="btn">下班，记一笔</button>
+  <div class="tabs"><span class="on">今天</span><span>月历</span><span>统计</span></div></div>
+
+  <div class="phone a short"><div class="pad" style="padding-left:56px;padding-right:16px">
+    <div class="date" style="margin-bottom:14px">二〇二六年 十月</div>
+    <div class="week"><i>一</i><i>二</i><i>三</i><i>四</i><i>五</i><i>六</i><i>日</i></div>
+    <div class="cal">
+      <span></span><span></span><span><b>1</b></span><span><b>2</b></span><span><b>3</b></span><span><b>4</b></span><span><b>5</b></span>
+      <span><b>6</b>8.2</span><span class="ot"><b>7</b>9.5</span><span class="miss"><b>8</b>缺卡</span><span><b>9</b>8.0</span><span class="ot"><b>10</b>10.1</span><span><b>11</b></span><span><b>12</b></span>
+    </div>
+    <div class="sub" style="margin-top:18px;font-size:16px">本月已记 41.6 小时，缺卡 1 天</div>
+  </div>
+  <div class="tabs"><span>今天</span><span class="on">月历</span><span>统计</span></div></div>
+</div>
+<dl class="card"><h2>A 纸质工时本</h2>
+  <dt>调性</dt><dd>像把原来那本手写本搬进手机，红色页边线、横格、楷体，从纸笔换过来不陌生</dd>
+  <dt>主色</dt><dd>米黄纸 + 墨水蓝，缺卡用印泥红</dd>
+  <dt>动效</dt><dd>打卡时数字像笔写出来一样描边出现；切标签像翻页；日历格盖章似的落下</dd>
+  <dt>风险</dt><dd>楷体数字在小尺寸下不太好读，统计页数据多时会显得挤</dd></dl>
+</div>
+
+<!-- B -->
+<div class="col"><div class="pair">
+  <div class="phone b"><div class="pad">
+    <div class="date">2026.10.07  WED</div>
+    <div class="state"><i></i>上班中</div>
+    <div class="big">06:42:18</div>
+    <div class="meta"><span>上班<em>08:58</em></span><span>标准<em>8h</em></span><span>还差<em>1:18</em></span></div>
+    <div class="bar"><div></div></div>
+  </div>
+  <div class="wrap"><button class="btn">下班</button></div>
+  <div class="tabs"><span class="on">计时</span><span>月历</span><span>统计</span></div></div>
+
+  <div class="phone b short"><div class="pad">
+    <div class="date" style="margin-bottom:16px">2026 / 10</div>
+    <div class="week" style="color:#5d6068"><i>一</i><i>二</i><i>三</i><i>四</i><i>五</i><i>六</i><i>日</i></div>
+    <div class="cal">
+      <span></span><span></span><span><b>1</b></span><span><b>2</b></span><span><b>3</b></span><span><b>4</b></span><span><b>5</b></span>
+      <span class="h2"><b>6</b>8.2</span><span class="h3"><b>7</b>9.5</span><span class="miss"><b>8</b>缺卡</span><span class="h1"><b>9</b>8.0</span><span class="h3"><b>10</b>10.1</span><span><b>11</b></span><span><b>12</b></span>
+    </div>
+    <div class="meta" style="margin-top:22px"><span>本月<em>41.6h</em></span><span>超时<em>+3.8h</em></span><span>缺卡<em style="color:#ff5a4e">1</em></span></div>
+  </div>
+  <div class="tabs"><span>计时</span><span class="on">月历</span><span>统计</span></div></div>
+</div>
+<dl class="card"><h2>B 仪表计时</h2>
+  <dt>调性</dt><dd>深色底、大号等宽秒表，计时是主角，夜里下班打开也不刺眼</dd>
+  <dt>主色</dt><dd>近黑 + 琥珀色，缺卡用信号红</dd>
+  <dt>动效</dt><dd>上班中按钮外圈呼吸；按下后圆钮收缩再弹回，状态色切换；日历格按工时深浅逐格亮起</dd>
+  <dt>风险</dt><dd>偏工具感、偏冷；白天强光下对比度要额外照顾</dd></dl>
+</div>
+
+<!-- C -->
+<div class="col"><div class="pair">
+  <div class="phone c"><div class="pad">
+    <div class="top">
+      <div class="date"><small>周三 · 08:58 上班</small>10月7日</div>
+      <div class="today">今日<b>6:42</b></div>
+    </div>
+    <div class="cal">
+      <span></span><span></span><span><b>1</b></span><span><b>2</b></span><span><b>3</b></span><span><b>4</b></span><span><b>5</b></span>
+      <span class="h2"><b>6</b>8.2</span><span class="h3 td"><b>7</b>6.7</span><span><b>8</b></span><span><b>9</b></span><span><b>10</b></span><span><b>11</b></span><span><b>12</b></span>
+      <span><b>13</b></span><span><b>14</b></span><span><b>15</b></span><span><b>16</b></span><span><b>17</b></span><span><b>18</b></span><span><b>19</b></span>
+    </div>
+  </div>
+  <button class="btn">下班打卡</button>
+  <div class="tabs"><span class="on">今天</span><span>月历</span><span>统计</span></div></div>
+
+  <div class="phone c short"><div class="pad">
+    <div class="date" style="margin-bottom:16px">十月<small style="display:inline;margin-left:8px">41.6 小时 · 5 天</small></div>
+    <div class="week"><i>一</i><i>二</i><i>三</i><i>四</i><i>五</i><i>六</i><i>日</i></div>
+    <div class="cal" style="margin-top:0">
+      <span></span><span></span><span><b>1</b></span><span><b>2</b></span><span><b>3</b></span><span><b>4</b></span><span><b>5</b></span>
+      <span class="h2"><b>6</b>8.2</span><span class="h3"><b>7</b>9.5</span><span class="miss"><b>8</b>缺卡</span><span class="h1"><b>9</b>8.0</span><span class="h3"><b>10</b>10.1</span><span><b>11</b></span><span><b>12</b></span>
+    </div>
+  </div>
+  <div class="tabs"><span>今天</span><span class="on">月历</span><span>统计</span></div></div>
+</div>
+<dl class="card"><h2>C 安静日历</h2>
+  <dt>调性</dt><dd>浅色、留白多，首页就是本月日历，颜色深浅一眼看出哪天干得多、哪天漏了</dd>
+  <dt>主色</dt><dd>暖白 + 苔绿深浅格，缺卡用橙色描边</dd>
+  <dt>动效</dt><dd>打卡后今天这一格颜色加深并轻微放大；切标签横向滑动；数字滚动更新</dd>
+  <dt>风险</dt><dd>计时感弱，"已经上了多久班"不如 B 醒目</dd></dl>
+</div>
+
+</div>
+</body>
+</html>

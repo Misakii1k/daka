@@ -1,0 +1,630 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#ffffff">
+<title>工时</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="icon" href="icons/icon-192.png" sizes="192x192">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="splash" id="splash" aria-hidden="true">
+  <img src="icons/icon.svg" width="84" height="84" alt="">
+  <div class="splash-band"><i></i></div>
+</div>
+<main id="views">
+
+  <!-- 今天 -->
+  <section class="view on" id="v-today" data-view="today">
+    <!-- 首页新版本悬浮更新浮窗 -->
+    <div class="home-update-float" id="home-update-float" hidden>
+      <div class="huf-content" id="huf-trigger">
+        <span class="huf-badge">新版</span>
+        <span class="huf-text" id="huf-text">发现新版本 v1.0.1</span>
+        <button class="huf-btn" id="huf-action-btn" type="button">点击更新</button>
+      </div>
+      <button class="huf-close" id="huf-close-btn" type="button" aria-label="关闭更新提示">&times;</button>
+    </div>
+
+    <div class="date" id="t-date"></div>
+    <div class="big num" id="t-dur">0:00<small id="t-dur-lb">已工作</small></div>
+    <div class="band" id="t-band">
+      <div class="seg" id="t-seg"></div>
+      <div class="now" id="t-now"></div>
+    </div>
+    <div class="ticks num"><span>0</span><span>6</span><span>12</span><span>18</span><span>24</span></div>
+    <div class="kv num">
+      <button class="cell" id="t-in" type="button">上班<b>--:--</b></button>
+      <button class="cell" id="t-out" type="button">下班<b>--:--</b></button>
+      <div class="cell" id="t-left">午休<b>--</b></div>
+    </div>
+    
+    <!-- 沉稳宽幅打卡按钮 -->
+    <div class="punch-hero-card" id="t-elder-card">
+      <button class="black-hero-btn" id="btn-quick-punch" type="button" aria-label="长按打卡">
+        <div class="hero-charge-track">
+          <div class="hero-charge-fill" id="btn-charge-fill"></div>
+          <div class="hero-charge-glow" id="btn-charge-glow"></div>
+        </div>
+        <div class="hero-btn-content">
+          <span class="hero-btn-title" id="m3-btn-title">长按打卡</span>
+          <span class="hero-btn-sub" id="m3-btn-sub">08:30 – 17:30</span>
+        </div>
+      </button>
+
+      <!-- 操作胶囊组 -->
+      <div class="hero-action-chips">
+        <button class="m3-chip highlight" id="btn-quick-adjust" type="button" hidden>微调</button>
+        <button class="m3-chip" id="btn-open-wizard" type="button">手写</button>
+        <button class="m3-chip" id="btn-yesterday-wizard" type="button">补记昨天</button>
+      </div>
+    </div>
+    <button class="main-btn" id="punch" type="button" style="display:none">上班打卡</button>
+  </section>
+
+  <!-- 记录 -->
+  <section class="view" id="v-records" data-view="records">
+    <div class="head">
+      <button class="arrow" id="w-prev" type="button" aria-label="上一周">‹</button>
+      <div class="date" id="w-title"></div>
+      <button class="arrow" id="w-next" type="button" aria-label="下一周">›</button>
+    </div>
+    <div class="big num sm" id="w-total">0<small>小时</small></div>
+    <div class="wk num" id="w-rows"></div>
+
+    <div class="head month">
+      <button class="arrow" id="m-prev" type="button" aria-label="上个月">‹</button>
+      <div class="mtitle" id="m-title"></div>
+      <button class="arrow" id="m-next" type="button" aria-label="下个月">›</button>
+    </div>
+    <div class="list num" id="m-list"></div>
+  </section>
+
+  <!-- 统计 -->
+  <section class="view" id="v-stats" data-view="stats">
+    <div class="head">
+      <button class="arrow" id="s-prev" type="button" aria-label="上个月">‹</button>
+      <div class="date" id="s-title"></div>
+      <button class="arrow" id="s-next" type="button" aria-label="下个月">›</button>
+    </div>
+    <div class="big num" id="s-total">0<small>小时</small></div>
+    <div class="grid2 num" id="s-grid"></div>
+    <div class="miss-list" id="s-miss"></div>
+
+    <!-- 薪资核算卡片 -->
+    <div class="salary-card">
+      <div class="sc-head">
+        <span class="sc-label">当月预计总薪资</span>
+        <span class="sc-rate-tag" id="sc-rate-tag">时薪 30 元/小时</span>
+      </div>
+      <div class="sc-amount num" id="s-salary-val">￥0.00</div>
+      <div class="sc-actions">
+        <button type="button" class="sc-btn primary" id="btn-open-export">导出结算单</button>
+      </div>
+    </div>
+
+    <!-- 卡片化设置中心 -->
+    <div class="settings-container">
+      <!-- 卡片 1：视觉与触感 -->
+      <div class="settings-card">
+        <div class="settings-card-head">
+          <span class="settings-card-title">视觉与触感</span>
+          <span class="settings-card-desc">界面主题与操作反馈</span>
+        </div>
+        <div class="settings-item-list">
+          <div class="settings-row">
+            <span>界面主题</span>
+            <div class="row-right">
+              <select id="set-theme">
+                <option value="system">跟随系统</option>
+                <option value="light">浅色模式</option>
+                <option value="dark">深色模式</option>
+              </select>
+            </div>
+          </div>
+          <div class="settings-row">
+            <span>文字大小</span>
+            <div class="row-right">
+              <select id="set-text-size">
+                <option value="standard">标准 (100%)</option>
+                <option value="large">大字 (115%)</option>
+                <option value="huge">特大 (126%)</option>
+              </select>
+            </div>
+          </div>
+          <div class="settings-row">
+            <span>触感振动反馈</span>
+            <div class="row-right">
+              <label class="switch-wrap">
+                <input type="checkbox" id="set-haptic" class="switch-input" checked>
+                <span class="switch-track"><span class="switch-thumb"></span></span>
+              </label>
+            </div>
+          </div>
+          <div class="settings-row">
+            <span>打卡庆祝动效</span>
+            <div class="row-right">
+              <select id="set-celebration">
+                <option value="confetti">彩礼烟花</option>
+                <option value="banknote">金钞飘落</option>
+                <option value="both">双重动效 (烟花与金钞)</option>
+                <option value="none">关闭动效</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 卡片 2：打卡提醒 -->
+      <div class="settings-card">
+        <div class="settings-card-head">
+          <span class="settings-card-title">打卡提醒</span>
+          <span class="settings-card-desc">定时通知防遗漏</span>
+        </div>
+        <div class="settings-item-list">
+          <div class="settings-row">
+            <span>上班提醒</span>
+            <div class="row-right">
+              <input type="time" id="set-reminder-in-time" value="08:20" style="width:96px;text-align:center;">
+              <label class="switch-wrap">
+                <input type="checkbox" id="set-reminder-in" class="switch-input" checked>
+                <span class="switch-track"><span class="switch-thumb"></span></span>
+              </label>
+            </div>
+          </div>
+          <div class="settings-row">
+            <span>下班提醒</span>
+            <div class="row-right">
+              <input type="time" id="set-reminder-out-time" value="17:30" style="width:96px;text-align:center;">
+              <label class="switch-wrap">
+                <input type="checkbox" id="set-reminder-out" class="switch-input" checked>
+                <span class="switch-track"><span class="switch-thumb"></span></span>
+              </label>
+            </div>
+          </div>
+          <div class="settings-row">
+            <span>通知权限测试</span>
+            <div class="row-right">
+              <button class="ghost" id="btn-test-notification" type="button" style="height:36px;padding:0 14px;border-radius:10px;">测试通知</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 卡片 3：数据存储与多端同步 -->
+      <div class="settings-card">
+        <div class="settings-card-head">
+          <span class="settings-card-title">数据存储与同步</span>
+          <span class="settings-card-desc" id="storage-current-desc">默认本地离线 · 可选云端</span>
+        </div>
+
+        <!-- 三联分段选择器 -->
+        <div class="storage-seg-tabs" id="storage-tabs">
+          <button type="button" class="storage-tab on" data-storage="local">本地存储</button>
+          <button type="button" class="storage-tab" data-storage="cloudflare">Cloudflare</button>
+          <button type="button" class="storage-tab" data-storage="webdav">WebDAV网盘</button>
+        </div>
+
+        <!-- 1. 本地存储面板 (默认) -->
+        <div class="storage-panel on" id="storage-panel-local">
+          <div class="storage-banner">
+            <strong>离线本地优先：</strong>打卡数据完全保存在当前设备浏览器中，无任何网络依赖，零隐私泄露风险。
+          </div>
+          <div class="storage-actions">
+            <button class="ghost" id="exp" type="button">导出备份JSON</button>
+            <label class="ghost" style="display:flex;align-items:center;justify-content:center;cursor:pointer;">
+              导入恢复JSON<input id="imp" type="file" accept="application/json" hidden>
+            </label>
+          </div>
+          <div class="storage-status-tag" id="local-storage-status">当前存储：本地安全持久化</div>
+        </div>
+
+        <!-- 2. Cloudflare 云端面板 -->
+        <div class="storage-panel" id="storage-panel-cloudflare" hidden>
+          <div class="storage-banner">
+            <strong>免费分布式云端：</strong>基于 Cloudflare D1 边缘关系型数据库，实现手机与电脑多端打卡数据同步。
+          </div>
+          <div class="storage-form-row">
+            <label for="set-user-id">多设备同步识别码 (User ID)</label>
+            <input id="set-user-id" type="text" maxlength="32" placeholder="默认本人（可输入自定义识别码）">
+          </div>
+          <div class="storage-actions">
+            <button class="ghost" id="btn-cloud-push" type="button">推送至云端</button>
+            <button class="ghost" id="btn-cloud-pull" type="button">从云端恢复</button>
+          </div>
+          <div class="storage-status-tag" id="cloud-sync-status">本地优先 · 云端就绪</div>
+        </div>
+
+        <!-- 3. WebDAV 网盘面板 -->
+        <div class="storage-panel" id="storage-panel-webdav" hidden>
+          <div class="storage-banner">
+            <strong>私有网盘自主掌控：</strong>支持坚果云、群晖 NAS、Alist、Nextcloud 等 WebDAV 网盘，不依赖任何第三方服务器。
+          </div>
+          <div class="storage-form-row">
+            <label for="set-webdav-url">WebDAV 服务器地址</label>
+            <input id="set-webdav-url" type="text" placeholder="https://dav.jianguoyun.com/dav/">
+          </div>
+          <div class="storage-form-row">
+            <label for="set-webdav-user">网盘账号 / 邮箱</label>
+            <input id="set-webdav-user" type="text" placeholder="您的网盘账号">
+          </div>
+          <div class="storage-form-row">
+            <label for="set-webdav-pass">应用授权密码 / 访问令牌</label>
+            <input id="set-webdav-pass" type="password" placeholder="网盘生成的应用专用密码">
+          </div>
+          <div class="storage-form-row">
+            <label for="set-webdav-file">备份文件名</label>
+            <input id="set-webdav-file" type="text" value="worklog-backup.json">
+          </div>
+          <div class="storage-actions">
+            <button class="ghost" id="btn-webdav-test" type="button">测试连接</button>
+            <button class="ghost" id="btn-webdav-push" type="button">备份到网盘</button>
+            <button class="ghost" id="btn-webdav-pull" type="button">从网盘恢复</button>
+          </div>
+          <div class="storage-status-tag" id="webdav-sync-status">WebDAV 就绪 · 点击测试连接</div>
+        </div>
+      </div>
+
+      <!-- 卡片 4：工时作息与识别偏好 -->
+      <div class="settings-card">
+        <div class="settings-card-head">
+          <span class="settings-card-title">工时作息与识别</span>
+          <span class="settings-card-desc">时薪单价与识别参数</span>
+        </div>
+        <div class="settings-item-list">
+          <div class="settings-row">
+            <span>时薪单价</span>
+            <div class="row-right">
+              <input id="set-wage" type="number" min="0" max="9999" step="1" inputmode="decimal" style="width:84px;text-align:right;">
+              <small>元/小时</small>
+            </div>
+          </div>
+          <div class="settings-row">
+            <span>午休扣除</span>
+            <div class="row-right">
+              <input id="set-lunch" type="number" min="0" max="240" step="5" inputmode="numeric" style="width:84px;text-align:right;">
+              <small>分钟</small>
+            </div>
+          </div>
+          <div class="settings-row">
+            <span>标准日工时</span>
+            <div class="row-right">
+              <input id="set-std" type="number" min="1" max="24" step="0.5" inputmode="decimal" style="width:84px;text-align:right;">
+              <small>小时</small>
+            </div>
+          </div>
+          <div class="settings-row">
+            <span>手写识别响应</span>
+            <div class="row-right">
+              <select id="set-hw-speed">
+                <option value="instant">极速 (100毫秒)</option>
+                <option value="fast" selected>灵敏 (180毫秒)</option>
+                <option value="balanced">均衡 (260毫秒)</option>
+                <option value="relaxed">从容 (380毫秒)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 版本与云端更新卡片 -->
+      <div class="settings-card">
+        <div class="settings-card-head">
+          <span class="settings-card-title">版本与云端更新</span>
+          <span class="settings-card-desc">自动检测与极速更新</span>
+        </div>
+        <div class="settings-item-list">
+          <div class="settings-row">
+            <span>当前安装版本</span>
+            <div class="row-right">
+              <span class="storage-status-tag" id="set-current-version">v1.0.0</span>
+            </div>
+          </div>
+          <div class="settings-row">
+            <span>云端更新源</span>
+            <div class="row-right">
+              <button type="button" class="sc-btn ghost" id="btn-check-update">检查新版本</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<nav class="tabs">
+  <button class="on" data-go="today" type="button">今天</button>
+  <button data-go="records" type="button">记录</button>
+  <button data-go="stats" type="button">统计</button>
+</nav>
+
+<!-- 编辑某天 -->
+<div class="sheet-mask" id="mask" hidden></div>
+<form class="sheet" id="sheet" hidden>
+  <div class="m3-drag-handle"></div>
+  <div class="sheet-title" id="e-title"></div>
+  <label class="row">上班<input id="e-in" type="time"></label>
+  <label class="row">下班<input id="e-out" type="time"></label>
+  <label class="row">备注<input id="e-note" type="text" maxlength="40" placeholder="可不填"></label>
+  <div class="sheet-act">
+    <button class="ghost danger" id="e-del" type="button">删除这天</button>
+    <button class="ghost" id="e-cancel" type="button">取消</button>
+    <button class="solid" type="submit">保存</button>
+  </div>
+</form>
+
+<!-- 长辈手写向导弹窗 -->
+<div class="wizard-modal" id="wizard-modal" hidden>
+  <div class="wiz-header">
+    <button class="wiz-close" id="wiz-close" type="button" aria-label="关闭">&times;</button>
+
+    <div class="wiz-title-wrap">
+      <div class="wiz-step-pill" id="wiz-step-pill">第 1 步 / 共 3 步</div>
+      <h2 class="wiz-title" id="wiz-title">您几点上班？</h2>
+      <div class="wiz-target-date" id="wiz-target-date">10月8日 周四</div>
+    </div>
+  </div>
+
+  <div class="wiz-body">
+    <!-- 步骤 1 & 2：手写时间 -->
+    <div class="wiz-step-content" id="wiz-step-time">
+      <div class="wiz-echo-box">
+        <div class="wiz-echo-label">识别时间</div>
+        <div class="wiz-echo-val num" id="wiz-echo-val">--:--</div>
+      </div>
+
+      <!-- 适老分格引导区：系统自带时间冒号，彻底解决字符粘连 -->
+      <div class="wiz-grid-container" id="wiz-grid-container">
+        <div class="wiz-grid-cell active" id="wiz-cell-0" data-idx="0">
+          <div class="wiz-grid-digit" id="wiz-gd-0">-</div>
+          <div class="wiz-grid-label">时 十位</div>
+        </div>
+        <div class="wiz-grid-cell" id="wiz-cell-1" data-idx="1">
+          <div class="wiz-grid-digit" id="wiz-gd-1">-</div>
+          <div class="wiz-grid-label">时 个位</div>
+        </div>
+        <div class="wiz-grid-colon">:</div>
+        <div class="wiz-grid-cell" id="wiz-cell-2" data-idx="2">
+          <div class="wiz-grid-digit" id="wiz-gd-2">-</div>
+          <div class="wiz-grid-label">分 十位</div>
+        </div>
+        <div class="wiz-grid-cell" id="wiz-cell-3" data-idx="3">
+          <div class="wiz-grid-digit" id="wiz-gd-3">-</div>
+          <div class="wiz-grid-label">分 个位</div>
+        </div>
+      </div>
+
+      <!-- 智能候选大药丸 -->
+      <div class="wiz-candidates" id="wiz-candidates"></div>
+
+      <!-- 手写板区域 -->
+      <div class="wiz-pad-container" id="wiz-pad-container">
+        <canvas id="wiz-canvas" class="wiz-canvas"></canvas>
+        <div class="wiz-pad-hint" id="wiz-pad-hint">请书写：时 十位（例如 0 或 1）</div>
+      </div>
+
+      <!-- 备用数字键盘 -->
+      <div class="wiz-keypad" id="wiz-keypad" hidden>
+        <button type="button" data-key="1">1</button>
+        <button type="button" data-key="2">2</button>
+        <button type="button" data-key="3">3</button>
+        <button type="button" data-key="4">4</button>
+        <button type="button" data-key="5">5</button>
+        <button type="button" data-key="6">6</button>
+        <button type="button" data-key="7">7</button>
+        <button type="button" data-key="8">8</button>
+        <button type="button" data-key="9">9</button>
+        <button type="button" data-key=":">:</button>
+        <button type="button" data-key="0">0</button>
+        <button type="button" data-key="del" class="del">退格</button>
+      </div>
+
+      <div class="wiz-pad-tools">
+        <button class="tool-btn danger" id="wiz-clear-cell-btn" type="button">重写本格</button>
+        <button class="tool-btn" id="wiz-clear-all-btn" type="button">清空全部</button>
+        <button class="tool-btn" id="wiz-next-cell-btn" type="button">下一格</button>
+        <button class="tool-btn" id="wiz-toggle-keypad" type="button">切换键盘</button>
+      </div>
+    </div>
+
+    <!-- 步骤 3：休息时间（记忆复用） -->
+    <div class="wiz-step-content" id="wiz-step-rest" hidden>
+      <!-- 常用记忆卡片 -->
+      <div class="wiz-routine-card" id="wiz-routine-card" hidden>
+        <div class="rc-badge">常用作息记忆</div>
+        <div class="rc-time" id="rc-time-txt">11:30 – 13:00（1.5小时）</div>
+        <button class="rc-btn" id="rc-use-btn" type="button">平时午休：一键复用并完成</button>
+      </div>
+
+      <div class="wiz-rest-title">选择休息时长</div>
+      <div class="wiz-rest-presets" id="wiz-rest-presets">
+        <button type="button" class="preset-btn" data-min="0">不休息 (0分)</button>
+        <button type="button" class="preset-btn" data-min="30">休息半小时 (30分)</button>
+        <button type="button" class="preset-btn on" data-min="60">休息 1 小时 (60分)</button>
+        <button type="button" class="preset-btn" data-min="90">休息 1.5 小时 (90分)</button>
+        <button type="button" class="preset-btn" data-min="120">休息 2 小时 (120分)</button>
+      </div>
+
+      <div class="wiz-custom-rest">
+        <div class="cr-title">或指定具体休息时间段</div>
+        <div class="cr-inputs">
+          <label>从 <input type="time" id="wiz-rest-start" value="12:00"></label>
+          <label>到 <input type="time" id="wiz-rest-end" value="13:00"></label>
+        </div>
+        <label class="cr-save-routine">
+          <input type="checkbox" id="wiz-save-routine" checked> 记住为平时的常用午休
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <div class="wiz-footer">
+    <button class="wiz-prev-btn ghost" id="wiz-prev-btn" type="button" hidden>上一步</button>
+    <button class="wiz-next-btn solid" id="wiz-next-btn" type="button">对，下一步</button>
+  </div>
+</div>
+
+<!-- 薪资结算与多格式导出中心弹窗 -->
+<div class="export-modal" id="export-modal" hidden>
+  <div class="em-header">
+    <button class="em-close" id="em-close" type="button" aria-label="关闭">&times;</button>
+    <div class="em-title-wrap">
+      <div class="em-tag">工时核算中心</div>
+      <h2 class="em-title">工时小票核算导出</h2>
+      <div class="em-sub" id="em-sub-period">2026年10月核算</div>
+    </div>
+  </div>
+
+  <div class="em-body">
+    <!-- 快捷参数调节 -->
+    <div class="em-controls">
+      <div class="em-ctrl-item">
+        <label for="em-wage-input">时薪单价</label>
+        <div class="em-input-wrap">
+          <input type="number" id="em-wage-input" min="0" max="9999" step="1" value="30">
+          <small>元/小时</small>
+        </div>
+      </div>
+      <div class="em-ctrl-item">
+        <label for="em-name-input">核算对象</label>
+        <div class="em-input-wrap">
+          <input type="text" id="em-name-input" maxlength="12" placeholder="可不填（默认本人）">
+        </div>
+      </div>
+      <div class="em-ctrl-item">
+        <label for="em-theme-select">导出版式</label>
+        <div class="em-input-wrap">
+          <select id="em-theme-select">
+            <option value="receipt">热敏收银小票（经典凭单）</option>
+            <option value="timecard">复古打卡工卡（机械纸卡）</option>
+            <option value="statement">现代极简报表（商务对账）</option>
+            <option value="calendar">日历热力手账（出勤图鉴）</option>
+            <option value="memo">胶带记账便签（随身手账）</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- 纸张实时预览卡片 -->
+    <div class="em-preview-container">
+      <div class="em-preview-tip">长图渲染实时预览（切换上方版式即时重绘）：</div>
+      <div class="receipt-paper" id="receipt-paper"></div>
+    </div>
+  </div>
+
+  <div class="em-footer">
+    <button class="em-act-btn primary" id="btn-export-image" type="button">保存核算高清长图 (PNG)</button>
+    <button class="em-act-btn secondary" id="btn-export-excel" type="button">导出明细表格 (.csv)</button>
+  </div>
+</div>
+
+<!-- 渐进式工时微调抽屉（先选部位，再调数值） -->
+<div class="m3-sheet-mask" id="adjust-mask" hidden></div>
+<div class="m3-bottom-sheet" id="adjust-sheet" hidden>
+  <div class="m3-drag-handle"></div>
+  <div class="m3-sheet-header">
+    <div class="m3-sheet-title">微调</div>
+    <button class="m3-sheet-close" id="adjust-close" type="button" aria-label="关闭">&times;</button>
+  </div>
+
+  <div class="m3-sheet-body">
+    <!-- 顶部部位切换标签：上班 / 下班 / 午休 -->
+    <div class="adj-tabs" id="adj-tabs">
+      <button type="button" class="adj-tab on" data-part="in">上班 <b id="adj-tab-in-val">08:30</b></button>
+      <button type="button" class="adj-tab" data-part="out">下班 <b id="adj-tab-out-val">17:30</b></button>
+      <button type="button" class="adj-tab" data-part="lunch">午休 <b id="adj-tab-lunch-val">60分</b></button>
+    </div>
+
+    <!-- 聚焦调节区：单次仅展示当前选中项 -->
+    <div class="adj-focus-card">
+      <!-- 上班面板 -->
+      <div class="adj-panel on" id="adj-panel-in">
+        <div class="adj-panel-head">上班时间</div>
+        <div class="adj-big-val num" id="adj-in-val">08:30</div>
+        <div class="adj-chips">
+          <button type="button" class="adj-btn" data-type="in" data-delta="-30">提前30分</button>
+          <button type="button" class="adj-btn" data-type="in" data-delta="-15">提前15分</button>
+          <button type="button" class="adj-btn" data-type="in" data-delta="15">延后15分</button>
+          <button type="button" class="adj-btn" data-type="in" data-delta="30">迟到30分</button>
+        </div>
+      </div>
+
+      <!-- 下班面板 -->
+      <div class="adj-panel" id="adj-panel-out" hidden>
+        <div class="adj-panel-head">下班时间</div>
+        <div class="adj-big-val num" id="adj-out-val">17:30</div>
+        <div class="adj-chips">
+          <button type="button" class="adj-btn" data-type="out" data-delta="-30">早退30分</button>
+          <button type="button" class="adj-btn" data-type="out" data-delta="-15">早退15分</button>
+          <button type="button" class="adj-btn" data-type="out" data-delta="15">延后15分</button>
+          <button type="button" class="adj-btn" data-type="out" data-delta="30">加班30分</button>
+        </div>
+      </div>
+
+      <!-- 午休面板 -->
+      <div class="adj-panel" id="adj-panel-lunch" hidden>
+        <div class="adj-panel-head">午休时长</div>
+        <div class="adj-big-val" id="adj-lunch-val">60 分钟</div>
+        <div class="adj-chips" id="adj-lunch-chips">
+          <button type="button" class="adj-btn" data-lunch="0">不休 0分</button>
+          <button type="button" class="adj-btn" data-lunch="30">休 30分</button>
+          <button type="button" class="adj-btn on" data-lunch="60">休 60分</button>
+          <button type="button" class="adj-btn" data-lunch="90">休 90分</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 极简汇总信息条 -->
+    <div class="adj-summary-bar">
+      <span>净工时 <strong id="adj-calc-hours">8.0 小时</strong></span>
+      <span>预计薪资 <span id="adj-calc-salary">￥240.00</span></span>
+    </div>
+  </div>
+
+  <div class="m3-sheet-footer">
+    <button type="button" class="solid" id="adjust-save-btn" style="width:100%">保存</button>
+  </div>
+</div>
+
+<!-- 应用版本更新详情弹窗 -->
+<div class="m3-sheet-mask" id="update-mask" hidden></div>
+<div class="update-modal" id="update-modal" hidden>
+  <div class="um-card">
+    <div class="um-head">
+      <div class="um-badge">云端发布</div>
+      <h3 class="um-title" id="um-title">发现新版本</h3>
+      <div class="um-version-row">
+        <span class="um-ver-old" id="um-old-ver">当前 v1.0.0</span>
+        <span class="um-arrow">→</span>
+        <span class="um-ver-new" id="um-new-ver">最新 v1.0.1</span>
+      </div>
+    </div>
+    <div class="um-body">
+      <div class="um-notes-title">更新说明</div>
+      <div class="um-notes-content" id="um-notes-content"></div>
+      <div class="um-meta-info" id="um-meta-info">发布时间: 2026-10-09</div>
+    </div>
+    <div class="um-footer">
+      <button type="button" class="em-act-btn primary" id="btn-do-update">立即更新并载入</button>
+      <button type="button" class="em-act-btn secondary" id="btn-cancel-update">稍后再说</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status"></div>
+
+<script src="nn_weights.js"></script>
+<script src="nn_engine.js"></script>
+<script src="handwriting.js"></script>
+<script src="exporter.js"></script>
+<script src="webdav.js"></script>
+<script src="fx_celebration.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
+
+

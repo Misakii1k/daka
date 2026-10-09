@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>手写时间识别算法实验室 - 方案对比体验</title>
+  <style>
+    :root {
+      --bg: #f7f7f8;
+      --card: #ffffff;
+      --text: #141414;
+      --muted: #666666;
+      --border: #e2e2e4;
+      --accent: #ff5722;
+      --accent-soft: #fff0eb;
+      --active-grid: #2563eb;
+      --active-soft: #eff6ff;
+      --success: #16a34a;
+      --radius: 16px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Segoe UI", Roboto, sans-serif; }
+    body { background: var(--bg); color: var(--text); padding: 16px; min-height: 100vh; max-width: 520px; margin: 0 auto; -webkit-tap-highlight-color: transparent; }
+
+    header { margin-bottom: 16px; text-align: center; }
+    h1 { font-size: 22px; font-weight: 700; margin-bottom: 6px; letter-spacing: -0.5px; }
+    .subtitle { font-size: 13px; color: var(--muted); line-height: 1.4; }
+
+    /* 顶部方案切换大选项卡 */
+    .tab-switch { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; background: #eaeaea; padding: 4px; border-radius: 12px; margin-bottom: 20px; }
+    .tab-btn { border: none; background: transparent; padding: 12px 8px; border-radius: 9px; font-size: 15px; font-weight: 600; color: #555; cursor: pointer; transition: all 0.2s; text-align: center; }
+    .tab-btn.active { background: #fff; color: var(--text); box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+
+    .panel { display: none; background: var(--card); border-radius: var(--radius); padding: 20px; border: 1px solid var(--border); box-shadow: 0 4px 16px rgba(0,0,0,0.03); }
+    .panel.active { display: block; }
+
+    /* 结果展示区 */
+    .result-box { display: flex; align-items: baseline; justify-content: space-between; background: #fafafa; border: 1px solid var(--border); padding: 14px 18px; border-radius: 12px; margin-bottom: 16px; }
+    .result-label { font-size: 14px; font-weight: 600; color: var(--muted); }
+    .result-val { font-size: 40px; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: 1px; color: var(--text); }
+
+    /* ---------- 方案 A：分格引导手写样式 ---------- */
+    .grid-container { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 20px; }
+    .grid-cell { width: 64px; height: 80px; border: 2px solid var(--border); border-radius: 14px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #fff; cursor: pointer; transition: all 0.15s; }
+    .grid-cell.active { border-color: var(--active-grid); background: var(--active-soft); box-shadow: 0 0 0 3px rgba(37,99,235,0.15); }
+    .grid-cell.filled { border-color: #94a3b8; }
+    .grid-digit { font-size: 38px; font-weight: 800; color: var(--text); line-height: 1; }
+    .grid-cell-label { font-size: 11px; color: var(--muted); margin-top: 4px; font-weight: 500; }
+    .grid-colon { font-size: 34px; font-weight: 800; color: #475569; user-select: none; line-height: 1; }
+
+    .pad-wrap { position: relative; width: 100%; height: 230px; background: #ffffff; border: 2px dashed #cbd5e1; border-radius: 14px; margin-bottom: 14px; touch-action: none; overflow: hidden; }
+    .pad-wrap.active-focus { border-color: var(--active-grid); border-style: solid; }
+    canvas { width: 100%; height: 100%; display: block; }
+    .pad-tip { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #94a3b8; font-size: 15px; font-weight: 500; pointer-events: none; user-select: none; }
+
+    /* 操作工具栏 */
+    .tools { display: flex; gap: 10px; margin-bottom: 16px; }
+    .btn { flex: 1; border: 1px solid var(--border); background: #f8fafc; color: var(--text); padding: 13px; font-size: 15px; font-weight: 600; border-radius: 10px; cursor: pointer; transition: all 0.15s; }
+    .btn:active { transform: scale(0.98); background: #e2e8f0; }
+    .btn.danger { color: #dc2626; border-color: #fecaca; background: #fef2f2; }
+    .btn.primary { background: #0f172a; color: #ffffff; border-color: #0f172a; }
+
+    /* 说明与对比要点卡片 */
+    .note-card { background: #f1f5f9; border-radius: 10px; padding: 12px 14px; font-size: 13px; color: #475569; line-height: 1.5; margin-top: 14px; }
+    .note-card strong { color: #0f172a; }
+
+    /* ---------- 方案 B：神经网络透视视窗 ---------- */
+    .diagnostic-panel { margin-top: 18px; border-top: 1px solid var(--border); padding-top: 16px; }
+    .diag-title { font-size: 14px; font-weight: 700; color: #0f172a; margin-bottom: 10px; }
+    .char-debug-list { display: flex; flex-direction: column; gap: 10px; }
+    .char-debug-item { display: flex; align-items: center; gap: 12px; background: #f8fafc; border: 1px solid var(--border); border-radius: 10px; padding: 10px; }
+    .char-preview { width: 44px; height: 44px; background: #000; border-radius: 6px; image-rendering: pixelated; }
+    .char-res-info { flex: 1; }
+    .char-pred-val { font-size: 18px; font-weight: 800; color: #0f172a; }
+    .char-conf-bar-wrap { width: 100%; height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden; margin-top: 4px; }
+    .char-conf-bar { height: 100%; background: var(--success); width: 0%; border-radius: 3px; transition: width 0.3s; }
+    .char-prob-txt { font-size: 11px; color: var(--muted); margin-top: 3px; }
+
+    .back-home { display: block; text-align: center; margin-top: 24px; font-size: 14px; font-weight: 600; color: #2563eb; text-decoration: none; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>手写识别方案对比实验室</h1>
+  <p class="subtitle">针对长辈时间输入真实场景：方案 A 分格 vs 方案 B 神经网络</p>
+</header>
+
+<div class="tab-switch">
+  <button type="button" class="tab-btn active" id="tab-a-btn">方案 A：适老分格手写</button>
+  <button type="button" class="tab-btn" id="tab-b-btn">方案 B：自由画板神经网络</button>
+</div>
+
+<!-- ==================== 方案 A：分格引导手写 ==================== -->
+<section class="panel active" id="panel-a">
+  <div class="result-box">
+    <div class="result-label">最终识别结果</div>
+    <div class="result-val" id="res-a-val">--:--</div>
+  </div>
+
+  <!-- 4 个大号格子 -->
+  <div class="grid-container">
+    <div class="grid-cell active" id="cell-0" data-idx="0">
+      <div class="grid-digit" id="gd-0">-</div>
+      <div class="grid-cell-label">时 十位</div>
+    </div>
+    <div class="grid-cell" id="cell-1" data-idx="1">
+      <div class="grid-digit" id="gd-1">-</div>
+      <div class="grid-cell-label">时 个位</div>
+    </div>
+    <div class="grid-colon">:</div>
+    <div class="grid-cell" id="cell-2" data-idx="2">
+      <div class="grid-digit" id="gd-2">-</div>
+      <div class="grid-cell-label">分 十位</div>
+    </div>
+    <div class="grid-cell" id="cell-3" data-idx="3">
+      <div class="grid-digit" id="gd-3">-</div>
+      <div class="grid-cell-label">分 个位</div>
+    </div>
+  </div>
+
+  <!-- 专属大号单字手写板 -->
+  <div class="pad-wrap active-focus" id="pad-wrap-a">
+    <canvas id="canvas-a"></canvas>
+    <div class="pad-tip" id="pad-tip-a">请在此书写当前格子数字</div>
+  </div>
+
+  <div class="tools">
+    <button type="button" class="btn danger" id="btn-clear-current">重写此格</button>
+    <button type="button" class="btn" id="btn-clear-all">全部清空</button>
+    <button type="button" class="btn primary" id="btn-next-cell">跳过此格</button>
+  </div>
+
+  <div class="note-card">
+    <strong>方案 A 特点与原理解析：</strong><br>
+    1. <strong>彻底解决字符粘连</strong>：长辈在宽敞的单画板上逐个书写单个数字，每个字享受完整的 240px 画布，字写得再大、再粗，也绝不会与其他数字发生连笔粘连。<br>
+    2. <strong>中间冒号免书写</strong>：系统自带大号时间冒号，长辈无需费力画冒号。<br>
+    3. <strong>写完自动流转</strong>：写完一个字停笔 0.4 秒自动填入当前格子并切至下一格，流畅省心。
+  </div>
+</section>
+
+<!-- ==================== 方案 B：自由画板神经网络 ==================== -->
+<section class="panel" id="panel-b">
+  <div class="result-box">
+    <div class="result-label">神经模型解析时间</div>
+    <div class="result-val" id="res-b-val">--:--</div>
+  </div>
+
+  <!-- 自由整幅画板 -->
+  <div class="pad-wrap" id="pad-wrap-b" style="height: 220px;">
+    <canvas id="canvas-b"></canvas>
+    <div class="pad-tip" id="pad-tip-b">在此自由手写连续时间（如 18:26 或 830）</div>
+  </div>
+
+  <div class="tools">
+    <button type="button" class="btn danger" id="btn-clear-b">清空重写</button>
+  </div>
+
+  <!-- 模型诊断透视面板 -->
+  <div class="diagnostic-panel">
+    <div class="diag-title">神经网络前向推理实时视窗（28x28 重心对齐）</div>
+    <div class="char-debug-list" id="debug-list-b">
+      <div style="font-size: 13px; color: #94a3b8; text-align: center; padding: 12px;">落笔后实时显示切分字符与神经网络概率分布</div>
+    </div>
+  </div>
+
+  <div class="note-card">
+    <strong>方案 B 特点与原理解析：</strong><br>
+    1. <strong>全纯前端离线神经网络</strong>：完全剔除人工 if-else 规则，采用 784 -> 64 -> 10 预训练 MNIST 权重矩阵，对弯曲、斜体、手抖具有非线性抗形变能力。<br>
+    2. <strong>挑战与局限</strong>：对于长辈写得极近的字符（如 2 的长横与 6 的竖线仅差 2 像素），仍需依赖空间切分器下刀，在极端粘连时切分复杂度高于方案 A。
+  </div>
+</section>
+
+<a href="index.html" class="back-home">返回打卡主应用</a>
+
+<script src="nn_weights.js"></script>
+<script src="nn_engine.js"></script>
+<script>
+  // ---------- 通用平滑绘图板类 ----------
+  class SmoothPad {
+    constructor(canvas, onEnd, onStart) {
+      this.canvas = canvas;
+      this.ctx = canvas.getContext('2d', { willReadFrequently: true });
+      this.onEnd = onEnd;
+      this.onStart = onStart;
+      this.strokes = [];
+      this.currentStroke = null;
+      this.dpr = window.devicePixelRatio || 1;
+      this.init();
+    }
+
+    init() {
+      const c = this.canvas;
+      this.resize();
+      window.addEventListener('resize', () => this.resize());
+
+      const getPos = e => {
+        const r = c.getBoundingClientRect();
+        return { x: e.clientX - r.left, y: e.clientY - r.top };
+      };
+
+      c.addEventListener('pointerdown', e => {
+        e.preventDefault();
+        c.setPointerCapture(e.pointerId);
+        if (this.onStart) this.onStart();
+        const p = getPos(e);
+        this.currentStroke = [p];
+        this.strokes.push(this.currentStroke);
+        this.redraw();
+      });
+
+      c.addEventListener('pointermove', e => {
+        if (!this.currentStroke) return;
+        e.preventDefault();
+        const p = getPos(e);
+        const last = this.currentStroke[this.currentStroke.length - 1];
+        if (Math.hypot(p.x - last.x, p.y - last.y) < 2) return;
+        this.currentStroke.push(p);
+        this.drawLastSeg();
+      });
+
+      const end = e => {
+        if (!this.currentStroke) return;
+        this.currentStroke = null;
+        this.redraw();
+        if (this.onEnd) this.onEnd(this.strokes);
+      };
+
+      c.addEventListener('pointerup', end);
+      c.addEventListener('pointercancel', end);
+    }
+
+    resize() {
+      const r = this.canvas.getBoundingClientRect();
+      const w = Math.floor(r.width || 340);
+      const h = Math.floor(r.height || 220);
+      this.canvas.width = w * this.dpr;
+      this.canvas.height = h * this.dpr;
+      this.ctx.scale(this.dpr, this.dpr);
+      this.redraw();
+    }
+
+    clear() {
+      this.strokes = [];
+      this.currentStroke = null;
+      this.redraw();
+      if (this.onEnd) this.onEnd([]);
+    }
+
+    redraw() {
+      const r = this.canvas.getBoundingClientRect();
+      this.ctx.clearRect(0, 0, r.width, r.height);
+      for (const st of this.strokes) {
+        this.drawStroke(st);
+      }
+    }
+
+    drawStroke(st) {
+      if (!st || st.length === 0) return;
+      const ctx = this.ctx;
+      ctx.save();
+      ctx.strokeStyle = '#0f172a';
+      ctx.fillStyle = '#0f172a';
+      ctx.lineWidth = 6.0;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+
+      if (st.length === 1) {
+        ctx.beginPath();
+        ctx.arc(st[0].x, st[0].y, 3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+        return;
+      }
+      ctx.beginPath();
+      ctx.moveTo(st[0].x, st[0].y);
+      for (let i = 1; i < st.length - 1; i++) {
+        const xc = (st[i].x + st[i + 1].x) / 2;
+        const yc = (st[i].y + st[i + 1].y) / 2;
+        ctx.quadraticCurveTo(st[i].x, st[i].y, xc, yc);
+      }
+      ctx.lineTo(st[st.length - 1].x, st[st.length - 1].y);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    drawLastSeg() {
+      const s = this.currentStroke;
+      if (!s || s.length < 2) return;
+      const p1 = s[s.length - 2];
+      const p2 = s[s.length - 1];
+      const ctx = this.ctx;
+      ctx.save();
+      ctx.strokeStyle = '#0f172a';
+      ctx.lineWidth = 6.0;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.beginPath();
+      ctx.moveTo(p1.x, p1.y);
+      ctx.lineTo(p2.x, p2.y);
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+
+  function getBBox(strokes) {
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const st of strokes) {
+      for (const p of st) {
+        if (p.x < minX) minX = p.x;
+        if (p.x > maxX) maxX = p.x;
+        if (p.y < minY) minY = p.y;
+        if (p.y > maxY) maxY = p.y;
+      }
+    }
+    return {
+      minX, minY, maxX, maxY,
+      w: Math.max(maxX - minX, 1),
+      h: Math.max(maxY - minY, 1)
+    };
+  }
+
+  // ==================== 选项卡切换 ====================
+  const tabBtnA = document.getElementById('tab-a-btn');
+  const tabBtnB = document.getElementById('tab-b-btn');
+  const panelA = document.getElementById('panel-a');
+  const panelB = document.getElementById('panel-b');
+
+  tabBtnA.onclick = () => {
+    tabBtnA.classList.add('active'); tabBtnB.classList.remove('active');
+    panelA.classList.add('active'); panelB.classList.remove('active');
+    setTimeout(() => padA.resize(), 50);
+  };
+  tabBtnB.onclick = () => {
+    tabBtnB.classList.add('active'); tabBtnA.classList.remove('active');
+    panelB.classList.add('active'); panelA.classList.remove('active');
+    setTimeout(() => padB.resize(), 50);
+  };
+
+  // ==================== 方案 A：分格引导手写逻辑 ====================
+  let currentActiveCell = 0;
+  const cellDigits = ['', '', '', ''];
+  let autoAdvanceTimer = null;
+
+  const tipA = document.getElementById('pad-tip-a');
+  const resAVal = document.getElementById('res-a-val');
+  const cellTipTexts = [
+    '请书写：时 十位（例如 0 或 1）',
+    '请书写：时 个位（例如 8 或 9）',
+    '请书写：分 十位（例如 0 到 5）',
+    '请书写：分 个位（例如 0 到 9）'
+  ];
+
+  function updateCellUI() {
+    for (let i = 0; i < 4; i++) {
+      const el = document.getElementById(`cell-${i}`);
+      const txt = document.getElementById(`gd-${i}`);
+      el.classList.toggle('active', i === currentActiveCell);
+      el.classList.toggle('filled', cellDigits[i] !== '');
+      txt.textContent = cellDigits[i] !== '' ? cellDigits[i] : '-';
+    }
+    const h = (cellDigits[0] || '-') + (cellDigits[1] || '-');
+    const m = (cellDigits[2] || '-') + (cellDigits[3] || '-');
+    resAVal.textContent = `${h}:${m}`;
+    tipA.textContent = cellTipTexts[currentActiveCell] || '请在此书写当前数字';
+  }
+
+  document.querySelectorAll('.grid-cell').forEach(cell => {
+    cell.onclick = () => {
+      currentActiveCell = Number(cell.dataset.idx);
+      updateCellUI();
+      padA.clear();
+      tipA.hidden = false;
+    };
+  });
+
+  const padA = new SmoothPad(
+    document.getElementById('canvas-a'),
+    strokes => {
+      if (!strokes || strokes.length === 0) {
+        tipA.hidden = false;
+        return;
+      }
+      tipA.hidden = true;
+
+      // 提取包围盒并使用神经网络推理单数字
+      const box = getBBox(strokes);
+      const input784 = window.NNEngine.preprocessStrokes(strokes, box);
+      const res = window.NNEngine.predict(input784);
+
+      if (res.digit !== '') {
+        cellDigits[currentActiveCell] = res.digit;
+        updateCellUI();
+
+        // 提笔 450ms 自动流转到下一格并清空画布
+        clearTimeout(autoAdvanceTimer);
+        autoAdvanceTimer = setTimeout(() => {
+          if (currentActiveCell < 3) {
+            currentActiveCell++;
+            updateCellUI();
+            padA.clear();
+            tipA.hidden = false;
+          }
+        }, 450);
+      }
+    },
+    () => {
+      tipA.hidden = true;
+      clearTimeout(autoAdvanceTimer);
+    }
+  );
+
+  document.getElementById('btn-clear-current').onclick = () => {
+    cellDigits[currentActiveCell] = '';
+    updateCellUI();
+    padA.clear();
+    tipA.hidden = false;
+  };
+
+  document.getElementById('btn-clear-all').onclick = () => {
+    for (let i = 0; i < 4; i++) cellDigits[i] = '';
+    currentActiveCell = 0;
+    updateCellUI();
+    padA.clear();
+    tipA.hidden = false;
+  };
+
+  document.getElementById('btn-next-cell').onclick = () => {
+    if (currentActiveCell < 3) {
+      currentActiveCell++;
+      updateCellUI();
+      padA.clear();
+      tipA.hidden = false;
+    }
+  };
+
+  // ==================== 方案 B：自由画板 + 神经网络逻辑 ====================
+  const tipB = document.getElementById('pad-tip-b');
+  const resBVal = document.getElementById('res-b-val');
+  const debugListB = document.getElementById('debug-list-b');
+
+  // 简易但健壮的空间连续切分器
+  function segmentFreehandStrokes(strokes) {
+    if (!strokes || strokes.length === 0) return [];
+    const items = strokes.map((st, i) => ({ st, box: getBBox([st]), i }));
+    items.sort((a, b) => a.box.minX - b.box.minX);
+
+    // 聚类分组
+    const groups = [];
+    for (const it of items) {
+      if (groups.length === 0) {
+        groups.push([it]);
+        continue;
+      }
+      const lastG = groups[groups.length - 1];
+      const gMaxX = Math.max(...lastG.map(x => x.box.maxX));
+      const gMinX = Math.min(...lastG.map(x => x.box.minX));
+      const gH = Math.max(...lastG.map(x => x.box.h));
+
+      const gapX = it.box.minX - gMaxX;
+      // 若水平重叠明显或紧密从属（如两笔构成的4或5）
+      const shouldMerge = (gapX < Math.max(12, gH * 0.18));
+      if (shouldMerge) {
+        lastG.push(it);
+      } else {
+        groups.push([it]);
+      }
+    }
+
+    return groups.map(g => {
+      const sts = g.map(x => x.st);
+      return { strokes: sts, box: getBBox(sts) };
+    });
+  }
+
+  const padB = new SmoothPad(
+    document.getElementById('canvas-b'),
+    strokes => {
+      if (!strokes || strokes.length === 0) {
+        tipB.hidden = false;
+        resBVal.textContent = '--:--';
+        debugListB.innerHTML = '<div style="font-size:13px;color:#94a3b8;text-align:center;padding:12px;">落笔后实时显示切分字符与神经网络概率分布</div>';
+        return;
+      }
+      tipB.hidden = true;
+
+      const groups = segmentFreehandStrokes(strokes);
+      const recognizedChars = [];
+      debugListB.innerHTML = '';
+
+      groups.forEach((g, idx) => {
+        // 判断冒号（介于字符之间、偏窄、上下排列或细小点）
+        const aspect = g.box.w / Math.max(g.box.h, 1);
+        const isColon = (idx > 0 && idx < groups.length - 1 && g.box.w < 36 && aspect < 0.55);
+        if (isColon) {
+          recognizedChars.push(':');
+          const row = document.createElement('div');
+          row.className = 'char-debug-item';
+          row.innerHTML = `
+            <div style="width: 44px; height: 44px; background: #e2e8f0; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 800; color: #334155;">:</div>
+            <div class="char-res-info">
+              <div class="char-pred-val">时间分隔符：<strong>冒号 :</strong></div>
+              <div class="char-prob-txt">空间结构与宽高比匹配成功</div>
+            </div>
+          `;
+          debugListB.appendChild(row);
+          return;
+        }
+
+        const input784 = window.NNEngine.preprocessStrokes(g.strokes, g.box);
+        const res = window.NNEngine.predict(input784);
+        recognizedChars.push(res.digit);
+
+        // 生成 28x28 诊断预览图
+        const prevCanvas = document.createElement('canvas');
+        prevCanvas.width = 28;
+        prevCanvas.height = 28;
+        prevCanvas.className = 'char-preview';
+        const pCtx = prevCanvas.getContext('2d');
+        const imgData = pCtx.createImageData(28, 28);
+        for (let i = 0; i < 784; i++) {
+          const v = Math.round(input784[i] * 255);
+          imgData.data[i * 4] = v;
+          imgData.data[i * 4 + 1] = v;
+          imgData.data[i * 4 + 2] = v;
+          imgData.data[i * 4 + 3] = 255;
+        }
+        pCtx.putImageData(imgData, 0, 0);
+
+        const row = document.createElement('div');
+        row.className = 'char-debug-item';
+        row.appendChild(prevCanvas);
+
+        const info = document.createElement('div');
+        info.className = 'char-res-info';
+        const confPct = Math.round(res.confidence * 100);
+        info.innerHTML = `
+          <div class="char-pred-val">字符 #${idx + 1}：识别为 <strong>${res.digit}</strong></div>
+          <div class="char-conf-bar-wrap">
+            <div class="char-conf-bar" style="width: ${confPct}%"></div>
+          </div>
+          <div class="char-prob-txt">模型预测置信度：${confPct}%</div>
+        `;
+        row.appendChild(info);
+        debugListB.appendChild(row);
+      });
+
+      // 简单组合解析
+      const raw = recognizedChars.join('');
+      if (raw.includes(':')) {
+        const parts = raw.split(':');
+        const h = parts[0].padStart(2, '0');
+        const m = (parts[1] || '').padEnd(2, '0').slice(0, 2);
+        resBVal.textContent = `${h}:${m}`;
+      } else if (raw.length === 4) {
+        resBVal.textContent = `${raw.slice(0, 2)}:${raw.slice(2, 4)}`;
+      } else if (raw.length === 3) {
+        resBVal.textContent = `0${raw[0]}:${raw.slice(1, 3)}`;
+      } else {
+        resBVal.textContent = raw || '--:--';
+      }
+    },
+    () => { tipB.hidden = true; }
+  );
+
+  document.getElementById('btn-clear-b').onclick = () => {
+    padB.clear();
+    tipB.hidden = false;
+    resBVal.textContent = '--:--';
+    debugListB.innerHTML = '<div style="font-size:13px;color:#94a3b8;text-align:center;padding:12px;">落笔后实时显示切分字符与神经网络概率分布</div>';
+  };
+</script>
+
+</body>
+</html>

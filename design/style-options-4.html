@@ -1,0 +1,727 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>工时记录 · 选择设计风格 · 第四批</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230a0714'/%3E%3Cpath d='M17 34l10 10 20-24' fill='none' stroke='%23ff3d9a' stroke-width='6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<style>
+:root{
+  --page-bg:#e7e3d9;
+  --page-ink:#171817;
+  --page-muted:#686a65;
+  --black:#111211;
+  --white:#fff;
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{
+  font-family:"PingFang SC","Microsoft YaHei",system-ui,-apple-system,sans-serif;
+  color:var(--page-ink);
+  background:
+    radial-gradient(circle at 18% -10%,#f4f1e8 0,#ebe7dd 42%,#d8d3c7 100%);
+  padding:34px 28px 120px;
+}
+.page-header{
+  max-width:1160px;margin:0 auto 28px;
+  display:flex;justify-content:space-between;align-items:flex-end;gap:24px;
+}
+.eyebrow{margin:0 0 9px;font-size:12px;letter-spacing:.18em;color:#77766f}
+h1{margin:0 0 10px;font-size:clamp(28px,4vw,46px);line-height:1.05;letter-spacing:-.045em;font-weight:780}
+.subtitle{margin:0;max-width:760px;color:var(--page-muted);font-size:14px;line-height:1.75}
+.header-note{
+  flex:0 0 auto;display:flex;align-items:center;gap:9px;
+  padding:11px 14px;border-radius:999px;background:rgba(255,255,255,.7);
+  border:1px solid rgba(0,0,0,.08);font-size:13px;color:#666862;white-space:nowrap;
+}
+.header-note span{
+  width:22px;height:10px;border-radius:99px;
+  background:linear-gradient(90deg,var(--black) 0 42%,#c9c3b8 42% 100%);
+}
+.gallery{
+  max-width:1160px;margin:0 auto;
+  display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;
+}
+.option{
+  --surface:#ffffff;
+  --surface2:#f4f4f0;
+  --text:#151615;
+  --muted2:#686a65;
+  --accent:#222;
+  --on-accent:#fff;
+  --line2:#deded8;
+  --warning:#d6532f;
+  --radius:17px;
+  display:flex;flex-direction:column;
+  border-radius:22px;overflow:hidden;
+  background:rgba(255,255,255,.76);
+  border:1px solid rgba(0,0,0,.08);
+  box-shadow:0 14px 34px rgba(0,0,0,.08);
+  transition:transform .2s ease,box-shadow .2s ease;
+}
+.option:hover{transform:translateY(-3px);box-shadow:0 20px 42px rgba(0,0,0,.12)}
+.option.selected{outline:3px solid var(--accent);outline-offset:3px}
+.phone{
+  aspect-ratio:390/720;margin:10px;border-radius:22px;overflow:hidden;
+  position:relative;container-type:inline-size;
+  background:var(--surface);box-shadow:inset 0 0 0 1px var(--line2);
+}
+.screen{
+  position:absolute;inset:0;padding:10px 12px 0;
+  display:flex;flex-direction:column;justify-content:space-between;gap:3.2cqw;overflow:hidden;
+  font-size:4cqw;color:var(--text);background:var(--surface);
+}
+.statusbar{display:flex;justify-content:space-between;align-items:center;font-size:3.1cqw;opacity:.82}
+.screen-head{display:flex;justify-content:space-between;align-items:flex-start}
+.screen-head p{margin:0 0 1cqw;font-size:3.2cqw;color:var(--muted2)}
+.screen-head h2{margin:0;font-size:5.3cqw;line-height:1.08;letter-spacing:-.05em;font-weight:780}
+.state-chip{
+  border:1px solid var(--line2);border-radius:999px;
+  padding:1.6cqw 2.8cqw;background:var(--surface2);
+  color:var(--accent);font-size:2.9cqw;white-space:nowrap;
+}
+.timer-card{
+  position:relative;border:1px solid var(--line2);border-radius:var(--radius);
+  padding:4cqw 21cqw 4cqw 4cqw;background:var(--surface2);overflow:hidden;
+}
+.timer-label{margin:0 0 1.2cqw;font-size:3.1cqw;color:var(--muted2)}
+.timer{
+  font-size:8.8cqw;line-height:1;letter-spacing:-.12em;font-weight:780;
+  font-variant-numeric:tabular-nums;
+}
+.ring{
+  position:absolute;right:3.5cqw;top:3.5cqw;width:15cqw;aspect-ratio:1;
+  border-radius:50%;display:grid;place-items:center;
+  background:conic-gradient(var(--accent) 0 82%,var(--line2) 82% 100%);
+}
+.ring::before{content:"";position:absolute;inset:1.7cqw;border-radius:50%;background:var(--surface2)}
+.ring span{position:relative;font-size:2.8cqw;color:var(--muted2)}
+.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:2cqw;margin:0}
+.metrics div{border:1px solid var(--line2);border-radius:var(--radius);background:var(--surface2);padding:2.7cqw 2.8cqw}
+.metrics dt{font-size:2.7cqw;color:var(--muted2)}
+.metrics dd{margin:1cqw 0 0;font-size:4cqw;font-weight:760;font-variant-numeric:tabular-nums}
+.week-strip{display:grid;grid-template-columns:repeat(5,1fr);gap:2cqw}
+.week-strip span{
+  display:flex;flex-direction:column;align-items:center;gap:1cqw;
+  border:1px solid var(--line2);border-radius:var(--radius);
+  background:var(--surface2);padding:2.5cqw 0;
+  font-size:2.7cqw;color:var(--muted2);
+}
+.week-strip b{font-size:3cqw;color:var(--text)}
+.week-strip .today{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.week-strip .today b{color:var(--on-accent)}
+.week-strip .miss{border-color:var(--warning);color:var(--warning)}
+.week-strip .past{background:var(--line2)}
+.week-strip .hot{background:var(--accent);opacity:.72;color:var(--on-accent)}
+.week-strip .hot b{color:var(--on-accent)}
+.record-list{
+  overflow:hidden;border:1px solid var(--line2);
+  border-radius:var(--radius);background:var(--surface2);
+}
+.record-list div{
+  display:grid;grid-template-columns:24% 1fr auto;align-items:center;
+  gap:2cqw;padding:3.1cqw 3.3cqw;font-size:3.1cqw;color:var(--muted2);
+}
+.record-list div+div{border-top:1px solid var(--line2)}
+.record-list b{font-size:3.3cqw;color:var(--text);font-variant-numeric:tabular-nums}
+.record-list em{font-style:normal;font-size:2.8cqw;color:var(--accent)}
+.primary{
+  margin-top:0;height:12cqw;border-radius:var(--radius);
+  display:flex;align-items:center;justify-content:center;
+  background:var(--accent);color:var(--on-accent);
+  font-size:4.2cqw;font-weight:760;
+}
+.bottom-tabs{
+  height:14cqw;margin:0 -12px;padding:0 12px;
+  display:grid;grid-template-columns:repeat(3,1fr);align-items:center;text-align:center;
+  border-top:1px solid var(--line2);color:var(--muted2);font-size:3.2cqw;
+}
+.bottom-tabs .active{color:var(--accent);font-weight:760}
+.option-body{display:flex;flex-direction:column;gap:12px;padding:0 14px 16px}
+.option-title h2{margin:0 0 4px;font-size:18px;letter-spacing:-.02em}
+.option-title p{margin:0;font-size:12.5px;color:#686a65}
+.swatches{list-style:none;display:flex;gap:6px;margin:0;padding:0}
+.swatches li{width:22px;height:22px;border-radius:50%;border:1px solid rgba(0,0,0,.16);background:var(--swatch)}
+.notes{margin:0;display:grid;gap:7px;font-size:12.5px;line-height:1.55}
+.notes dt{font-weight:760;color:#333531}
+.notes dd{margin:0;color:#646661}
+.select-btn{
+  height:44px;border:1px solid #171817;border-radius:12px;
+  background:#171817;color:#fff;font-weight:760;font-size:14px;cursor:pointer;
+}
+.select-btn:hover{filter:brightness(1.18)}
+.choice-bar{
+  position:fixed;left:50%;bottom:24px;z-index:20;
+  width:min(680px,calc(100vw - 32px));
+  transform:translateX(-50%) translateY(130%);
+  display:flex;justify-content:space-between;align-items:center;gap:14px;
+  padding:14px 16px;border-radius:18px;
+  background:#111211;color:#fff;
+  box-shadow:0 22px 60px rgba(0,0,0,.28);
+  transition:transform .25s ease;
+}
+.choice-bar[hidden]{display:none}
+.choice-bar.show{transform:translateX(-50%) translateY(0)}
+.choice-bar b{display:block;font-size:15px;margin-bottom:2px}
+.choice-bar span{font-size:12px;color:#b8b8b3}
+.choice-actions{display:flex;gap:8px;flex:0 0 auto}
+.choice-secondary{
+  min-width:48px;min-height:44px;padding:0 13px;border-radius:10px;
+  border:1px solid #666;background:transparent;color:#fff;cursor:pointer;
+}
+.choice-secondary:hover{background:#2a2b2a}
+.toast{
+  position:fixed;left:50%;bottom:112px;z-index:30;
+  transform:translateX(-50%) translateY(12px);
+  background:#111;color:#fff;border-radius:999px;padding:10px 16px;
+  font-size:13px;opacity:0;pointer-events:none;transition:opacity .2s ease,transform .2s ease;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+@media (max-width:1280px){
+  .gallery{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;padding:2px 2px 18px}
+  .option{flex:0 0 300px;scroll-snap-align:start}
+}
+@media (max-width:700px){
+  body{padding:24px 16px 130px}
+  .page-header{display:block}
+  .header-note{display:none}
+  .gallery{display:flex;flex-direction:column;overflow:visible}
+  .option{flex:1;scroll-snap-align:none}
+  .phone{aspect-ratio:390/720}
+}
+@media (prefers-reduced-motion:reduce){
+  *{animation-duration:.01ms!important;transition-duration:.01ms!important;scroll-behavior:auto!important}
+}
+/* ===== 霓虹街市 ===== */
+.s-neon{
+  --surface:#0a0714;
+  --surface2:rgba(255,255,255,.05);
+  --text:#f5e9ff;
+  --muted2:#8b7fa8;
+  --accent:#ff3d9a;
+  --on-accent:#fff;
+  --line2:rgba(255,255,255,.14);
+  --warning:#ffe45c;
+  --radius:14px;
+}
+.s-neon .phone{
+  background:
+    radial-gradient(circle at 20% 8%,rgba(255,61,154,.24),transparent 40%),
+    radial-gradient(circle at 85% 85%,rgba(53,224,255,.18),transparent 45%),
+    radial-gradient(circle at 72% 32%,rgba(255,228,92,.1),transparent 35%),
+    #0a0714;
+}
+.s-neon .screen{background:transparent}
+.s-neon .screen-head h2{color:#fff;text-shadow:0 0 14px rgba(255,61,154,.75)}
+.s-neon .timer-card{
+  background:rgba(255,255,255,.04);
+  border:1px solid rgba(255,61,154,.55);
+  box-shadow:0 0 22px rgba(255,61,154,.18),inset 0 0 18px rgba(255,61,154,.08);
+}
+.s-neon .timer{
+  color:#ff9ecd;
+  text-shadow:0 0 16px rgba(255,61,154,.65);
+}
+.s-neon .ring{background:conic-gradient(#ff3d9a 0 82%,rgba(255,255,255,.1) 82% 100%)}
+.s-neon .ring::before{background:#120a20}
+.s-neon .ring span{color:#35e0ff}
+.s-neon .state-chip{
+  background:rgba(53,224,255,.08);
+  border:1px solid #35e0ff;
+  color:#35e0ff;
+  box-shadow:0 0 10px rgba(53,224,255,.35),inset 0 0 8px rgba(53,224,255,.15);
+}
+.s-neon .timer-card,
+.s-neon .metrics div,
+.s-neon .week-strip span,
+.s-neon .record-list{
+  background:rgba(255,255,255,.04);
+}
+.s-neon .metrics div,
+.s-neon .week-strip span,
+.s-neon .record-list{border:1px solid rgba(255,255,255,.14)}
+.s-neon .metrics dd{color:#fff}
+.s-neon .week-strip .past{background:rgba(255,255,255,.08);color:#8b7fa8}
+.s-neon .week-strip .today{
+  background:#ff3d9a;border-color:#ff3d9a;color:#fff;
+  box-shadow:0 0 14px rgba(255,61,154,.55);
+}
+.s-neon .week-strip .today b{color:#fff}
+.s-neon .week-strip .miss{
+  background:transparent;border-color:#ffe45c;color:#ffe45c;
+  box-shadow:0 0 10px rgba(255,228,92,.3);
+}
+.s-neon .week-strip .hot{
+  background:#35e0ff;border-color:#35e0ff;color:#06202b;opacity:1;
+  box-shadow:0 0 14px rgba(53,224,255,.5);
+}
+.s-neon .week-strip .hot b{color:#06202b}
+.s-neon .record-list em{color:#35e0ff}
+.s-neon .record-list b{color:#fff}
+.s-neon .record-list div+div{border-top:1px solid rgba(255,255,255,.1)}
+.s-neon .primary{
+  background:rgba(255,61,154,.08);
+  border:2px solid #ff3d9a;
+  color:#ff9ecd;
+  box-shadow:0 0 20px rgba(255,61,154,.45),inset 0 0 14px rgba(255,61,154,.18);
+  letter-spacing:.18em;
+}
+.s-neon .bottom-tabs{
+  background:rgba(10,7,20,.92);
+  border-top:1px solid rgba(255,255,255,.12);
+}
+.s-neon .bottom-tabs .active{color:#ff9ecd;text-shadow:0 0 10px rgba(255,61,154,.7)}
+.s-neon .swatches li:nth-child(1){--swatch:#0a0714}
+.s-neon .swatches li:nth-child(2){--swatch:#ff3d9a}
+.s-neon .swatches li:nth-child(3){--swatch:#35e0ff}
+.s-neon .swatches li:nth-child(4){--swatch:#ffe45c}
+.s-neon .swatches li:nth-child(5){--swatch:#f5e9ff}
+
+/* ===== 千禧铬光 ===== */
+.s-y2k{
+  --surface:#eef0fa;
+  --surface2:#f8f9ff;
+  --text:#232240;
+  --muted2:#7d7fa5;
+  --accent:#6f5bff;
+  --on-accent:#fff;
+  --line2:#dde1f8;
+  --warning:#ff6ec7;
+  --radius:20px;
+}
+.s-y2k .phone{
+  background:
+    radial-gradient(3px 3px at 26% 14%,#fff 45%,transparent 50%),
+    radial-gradient(3px 3px at 78% 26%,#fff 45%,transparent 50%),
+    radial-gradient(4px 4px at 62% 8%,#ffb1e2 45%,transparent 50%),
+    radial-gradient(3px 3px at 12% 42%,#fff 45%,transparent 50%),
+    radial-gradient(3px 3px at 88% 70%,#a5f0ff 45%,transparent 50%),
+    linear-gradient(150deg,#ccd6ff 0%,#eccbff 24%,#c9f2ff 48%,#ffd0ec 72%,#d7dcff 100%);
+}
+.s-y2k .screen{background:transparent}
+.s-y2k .timer-card,
+.s-y2k .metrics div,
+.s-y2k .week-strip span,
+.s-y2k .record-list{
+  background:rgba(255,255,255,.8);
+  border:1px solid rgba(255,255,255,.95);
+  box-shadow:0 10px 26px rgba(122,92,255,.22),inset 0 1px 0 #fff;
+}
+.s-y2k .timer{
+  background:linear-gradient(180deg,#e3e8ff 0%,#6a57e8 36%,#ffffff 50%,#5340d6 64%,#ccd4ff 100%);
+  -webkit-background-clip:text;background-clip:text;
+  -webkit-text-fill-color:transparent;color:#5b49d6;
+}
+.s-y2k .ring{background:conic-gradient(#7a63ff 0 82%,#d6d9fa 82% 100%)}
+.s-y2k .ring::before{background:#f4f5ff}
+.s-y2k .ring span{color:#7d7fa5}
+.s-y2k .state-chip{
+  background:linear-gradient(135deg,#b9c4ff,#ffb1e2);
+  border:1px solid #fff;color:#3a2d99;
+  box-shadow:0 4px 12px rgba(122,92,255,.28);
+}
+.s-y2k .week-strip .past{background:#dcdff5;color:#9a9cc0}
+.s-y2k .week-strip .today{
+  background:linear-gradient(180deg,#8f7bff,#5b3ff0);
+  border-color:#5b3ff0;color:#fff;
+  box-shadow:0 6px 14px rgba(111,91,255,.4);
+}
+.s-y2k .week-strip .today b{color:#fff}
+.s-y2k .week-strip .miss{
+  background:#ff5cc4;border-color:#ff5cc4;color:#fff;
+  box-shadow:0 6px 14px rgba(255,92,196,.4);
+}
+.s-y2k .week-strip .hot{
+  background:#45d8ff;border-color:#45d8ff;color:#0b3f66;opacity:1;
+  box-shadow:0 6px 14px rgba(69,216,255,.45);
+}
+.s-y2k .week-strip .hot b{color:#0b3f66}
+.s-y2k .record-list em{color:#6f5bff}
+.s-y2k .record-list div+div{border-top:1px solid #e6e4f6}
+.s-y2k .primary{
+  background:linear-gradient(180deg,#e6e9ff 0%,#8f7bff 35%,#5b3ff0 50%,#8f7bff 65%,#dcd9ff 100%);
+  border:1px solid #fff;
+  color:#fff;
+  box-shadow:0 12px 28px rgba(91,63,240,.45),inset 0 1px 0 rgba(255,255,255,.9);
+  letter-spacing:.06em;
+}
+.s-y2k .bottom-tabs{
+  background:rgba(255,255,255,.8);
+  border-top:1px solid #e2e5fa;
+  backdrop-filter:blur(8px);
+}
+.s-y2k .bottom-tabs .active{color:#6f5bff}
+.s-y2k .swatches li:nth-child(1){--swatch:#eef0fa}
+.s-y2k .swatches li:nth-child(2){--swatch:#6f5bff}
+.s-y2k .swatches li:nth-child(3){--swatch:#ff6ec7}
+.s-y2k .swatches li:nth-child(4){--swatch:#45d8ff}
+.s-y2k .swatches li:nth-child(5){--swatch:#232240}
+
+/* ===== 像素街机 ===== */
+.s-pixel{
+  --surface:#1a1030;
+  --surface2:#251a45;
+  --text:#ffe9f7;
+  --muted2:#9d8fd0;
+  --accent:#ffd23f;
+  --on-accent:#1a1030;
+  --line2:rgba(255,255,255,.35);
+  --warning:#ff4f9a;
+  --radius:0;
+}
+.s-pixel .phone{
+  background:
+    radial-gradient(3px 3px at 18% 12%,rgba(255,255,255,.9) 40%,transparent 45%),
+    radial-gradient(2px 2px at 82% 20%,rgba(255,233,247,.7) 40%,transparent 45%),
+    radial-gradient(2px 2px at 70% 6%,#3ef0c8 40%,transparent 45%),
+    radial-gradient(3px 3px at 90% 60%,rgba(255,79,154,.8) 40%,transparent 45%),
+    radial-gradient(2px 2px at 8% 55%,rgba(255,210,63,.9) 40%,transparent 45%),
+    radial-gradient(circle at 50% 0,rgba(62,240,200,.16),transparent 45%),
+    #1a1030;
+}
+.s-pixel .screen{
+  background:
+    repeating-linear-gradient(0,rgba(0,0,0,.22) 0 2px,transparent 2px 5px),
+    transparent;
+}
+.s-pixel .timer-card{
+  border:3px solid #3ef0c8;
+  background:#251a45;
+  clip-path:polygon(
+    0 6px,6px 6px,6px 0,calc(100% - 6px) 0,calc(100% - 6px) 6px,100% 6px,
+    100% calc(100% - 6px),calc(100% - 6px) calc(100% - 6px),calc(100% - 6px) 100%,
+    6px 100%,6px calc(100% - 6px),0 calc(100% - 6px));
+}
+.s-pixel .timer{
+  color:#ffd23f;
+  text-shadow:3px 3px 0 #ff4f9a;
+  letter-spacing:-.06em;
+}
+.s-pixel .ring{border-radius:0;background:conic-gradient(#3ef0c8 0 82%,rgba(255,255,255,.15) 82% 100%)}
+.s-pixel .ring::before{border-radius:0;background:#1a1030}
+.s-pixel .ring span{color:#3ef0c8}
+.s-pixel .state-chip{
+  border-radius:0;border:2px solid #ff4f9a;
+  background:#ff4f9a;color:#1a1030;
+  box-shadow:2px 2px 0 rgba(0,0,0,.5);
+}
+.s-pixel .metrics div,
+.s-pixel .week-strip span,
+.s-pixel .record-list{
+  border:3px solid rgba(255,255,255,.35);
+  border-radius:0;
+  background:#251a45;
+}
+.s-pixel .metrics dd{color:#fff}
+.s-pixel .week-strip .past{background:rgba(255,255,255,.1);color:#9d8fd0}
+.s-pixel .week-strip .today{
+  background:#3ef0c8;border-color:#3ef0c8;color:#1a1030;
+  box-shadow:2px 2px 0 rgba(0,0,0,.5);
+}
+.s-pixel .week-strip .today b{color:#1a1030}
+.s-pixel .week-strip .miss{
+  background:#ff4f9a;border-color:#ff4f9a;color:#fff;
+  box-shadow:2px 2px 0 rgba(0,0,0,.5);
+}
+.s-pixel .week-strip .hot{
+  background:#ffd23f;border-color:#ffd23f;color:#1a1030;opacity:1;
+  box-shadow:2px 2px 0 rgba(0,0,0,.5);
+}
+.s-pixel .week-strip .hot b{color:#1a1030}
+.s-pixel .record-list em{color:#3ef0c8}
+.s-pixel .record-list b{color:#fff}
+.s-pixel .record-list div+div{border-top:3px solid rgba(255,255,255,.2)}
+.s-pixel .primary{
+  background:#ffd23f;color:#1a1030;border-radius:0;
+  box-shadow:0 6px 0 #c79100,3px 9px 0 rgba(0,0,0,.4);
+  letter-spacing:.14em;
+}
+.s-pixel .bottom-tabs{
+  background:#140c28;
+  border-top:3px solid rgba(255,255,255,.25);
+}
+.s-pixel .bottom-tabs .active{color:#ffd23f}
+.s-pixel .swatches li{border-radius:0}
+.s-pixel .swatches li:nth-child(1){--swatch:#1a1030}
+.s-pixel .swatches li:nth-child(2){--swatch:#3ef0c8}
+.s-pixel .swatches li:nth-child(3){--swatch:#ff4f9a}
+.s-pixel .swatches li:nth-child(4){--swatch:#ffd23f}
+.s-pixel .swatches li:nth-child(5){--swatch:#ffe9f7}
+</style>
+</head>
+<body>
+<header class="page-header">
+  <div>
+    <p class="eyebrow">工时记录 App · 风格选择 · 第四批</p>
+    <h1>再来 3 个大胆的方向</h1>
+    <p class="subtitle">这批走最鲜明、最有记忆点的路线:夜色霓虹、千禧金属、8-bit 街机。同一组打卡数据、同一个主任务,只换视觉语言。看完告诉我选哪个,或者说清“哪里好哪里不好”。</p>
+  </div>
+  <div class="header-note"><span></span>窄屏下横向滑动查看全部</div>
+</header>
+
+<main class="gallery" id="gallery">
+  <!-- ===== 风格 1：霓虹街市 ===== -->
+  <article class="option s-neon" data-style-id="neon" data-style-name="霓虹街市">
+    <div class="phone">
+      <div class="screen">
+        <div class="statusbar"><span>9:41</span><span>● ● ●</span></div>
+        <header class="screen-head">
+          <div><p>周三</p><h2>10月7日</h2></div>
+          <div class="state-chip">上班中</div>
+        </header>
+        <section class="timer-card">
+          <p class="timer-label">今日已工作</p>
+          <div class="timer">06:42:18</div>
+          <div class="ring"><span>82%</span></div>
+        </section>
+        <dl class="metrics">
+          <div><dt>上班</dt><dd>08:58</dd></div>
+          <div><dt>标准</dt><dd>8h</dd></div>
+          <div><dt>还差</dt><dd>1:18</dd></div>
+        </dl>
+        <section class="week-strip">
+          <span class="past"><b>二</b>8.2</span>
+          <span class="today"><b>三</b>6.7</span>
+          <span class="miss"><b>四</b>缺卡</span>
+          <span><b>五</b>8.0</span>
+          <span class="hot"><b>六</b>10.1</span>
+        </section>
+        <section class="record-list">
+          <div><b>08:58</b><span>上班打卡</span><em>已确认</em></div>
+          <div><b>12:00</b><span>午休</span><em>1小时</em></div>
+          <div><b>18:00</b><span>预计下班</span><em>1:18</em></div>
+        </section>
+        <div class="primary" aria-hidden="true">下班打卡</div>
+        <nav class="bottom-tabs" aria-hidden="true"><span class="active">计时</span><span>月历</span><span>统计</span></nav>
+      </div>
+    </div>
+    <div class="option-body">
+      <div class="option-title"><h2>霓虹街市</h2><p>夜色里的灯管与光晕</p></div>
+      <ul class="swatches"><li></li><li></li><li></li><li></li><li></li></ul>
+      <dl class="notes">
+        <dt>优势</dt><dd>粉红霓虹灯管描边加夜景光晕,夜里的仪式感拉满,状态色像灯箱一样醒目。</dd>
+        <dt>风险</dt><dd>光晕密度要控制,过了就像夜店主题;白天强光下黑底优势消失。</dd>
+      </dl>
+      <button class="select-btn" type="button">选择此风格</button>
+    </div>
+  </article>
+
+  <!-- ===== 风格 2：千禧铬光 ===== -->
+  <article class="option s-y2k" data-style-id="y2k" data-style-name="千禧铬光">
+    <div class="phone">
+      <div class="screen">
+        <div class="statusbar"><span>9:41</span><span>● ● ●</span></div>
+        <header class="screen-head">
+          <div><p>周三</p><h2>10月7日</h2></div>
+          <div class="state-chip">上班中</div>
+        </header>
+        <section class="timer-card">
+          <p class="timer-label">今日已工作</p>
+          <div class="timer">06:42:18</div>
+          <div class="ring"><span>82%</span></div>
+        </section>
+        <dl class="metrics">
+          <div><dt>上班</dt><dd>08:58</dd></div>
+          <div><dt>标准</dt><dd>8h</dd></div>
+          <div><dt>还差</dt><dd>1:18</dd></div>
+        </dl>
+        <section class="week-strip">
+          <span class="past"><b>二</b>8.2</span>
+          <span class="today"><b>三</b>6.7</span>
+          <span class="miss"><b>四</b>缺卡</span>
+          <span><b>五</b>8.0</span>
+          <span class="hot"><b>六</b>10.1</span>
+        </section>
+        <section class="record-list">
+          <div><b>08:58</b><span>上班打卡</span><em>已确认</em></div>
+          <div><b>12:00</b><span>午休</span><em>1小时</em></div>
+          <div><b>18:00</b><span>预计下班</span><em>1:18</em></div>
+        </section>
+        <div class="primary" aria-hidden="true">下班打卡</div>
+        <nav class="bottom-tabs" aria-hidden="true"><span class="active">计时</span><span>月历</span><span>统计</span></nav>
+      </div>
+    </div>
+    <div class="option-body">
+      <div class="option-title"><h2>千禧铬光</h2><p>全息渐变的复古未来</p></div>
+      <ul class="swatches"><li></li><li></li><li></li><li></li><li></li></ul>
+      <dl class="notes">
+        <dt>优势</dt><dd>全息渐变、金属质感大数字和星光点缀,千禧年复古未来感,年轻、亮眼、辨识度极高。</dd>
+        <dt>风险</dt><dd>金属渐变层次多,统计信息密集时容易显花;审美两极,喜欢与否很直接。</dd>
+      </dl>
+      <button class="select-btn" type="button">选择此风格</button>
+    </div>
+  </article>
+
+  <!-- ===== 风格 3：像素街机 ===== -->
+  <article class="option s-pixel" data-style-id="pixel" data-style-name="像素街机">
+    <div class="phone">
+      <div class="screen">
+        <div class="statusbar"><span>9:41</span><span>● ● ●</span></div>
+        <header class="screen-head">
+          <div><p>周三</p><h2>10月7日</h2></div>
+          <div class="state-chip">上班中</div>
+        </header>
+        <section class="timer-card">
+          <p class="timer-label">今日已工作</p>
+          <div class="timer">06:42:18</div>
+          <div class="ring"><span>82%</span></div>
+        </section>
+        <dl class="metrics">
+          <div><dt>上班</dt><dd>08:58</dd></div>
+          <div><dt>标准</dt><dd>8h</dd></div>
+          <div><dt>还差</dt><dd>1:18</dd></div>
+        </dl>
+        <section class="week-strip">
+          <span class="past"><b>二</b>8.2</span>
+          <span class="today"><b>三</b>6.7</span>
+          <span class="miss"><b>四</b>缺卡</span>
+          <span><b>五</b>8.0</span>
+          <span class="hot"><b>六</b>10.1</span>
+        </section>
+        <section class="record-list">
+          <div><b>08:58</b><span>上班打卡</span><em>已确认</em></div>
+          <div><b>12:00</b><span>午休</span><em>1小时</em></div>
+          <div><b>18:00</b><span>预计下班</span><em>1:18</em></div>
+        </section>
+        <div class="primary" aria-hidden="true">下班打卡</div>
+        <nav class="bottom-tabs" aria-hidden="true"><span class="active">计时</span><span>月历</span><span>统计</span></nav>
+      </div>
+    </div>
+    <div class="option-body">
+      <div class="option-title"><h2>像素街机</h2><p>把打卡变成通关游戏</p></div>
+      <ul class="swatches"><li></li><li></li><li></li><li></li><li></li></ul>
+      <dl class="notes">
+        <dt>优势</dt><dd>8-bit 方角、硬阴影、街机按钮手感,扫描线加像素星空,趣味和记忆点最强。</dd>
+        <dt>风险</dt><dd>像素气质极强,正式感和精致感最弱;粗边框在小屏上占空间。</dd>
+      </dl>
+      <button class="select-btn" type="button">选择此风格</button>
+    </div>
+  </article>
+</main>
+
+<aside class="choice-bar" id="choiceBar" hidden>
+  <div><b id="choiceName">未选择</b><span>选择已保存在当前浏览器</span></div>
+  <div class="choice-actions">
+    <button class="choice-secondary" id="copyChoice" type="button">复制选择</button>
+    <button class="choice-secondary" id="clearChoice" type="button">清除</button>
+  </div>
+</aside>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function(){
+  var STORAGE_KEY='worktime-design-style-choice-batch4';
+  var options=Array.prototype.slice.call(document.querySelectorAll('.option'));
+  var bar=document.getElementById('choiceBar');
+  var choiceName=document.getElementById('choiceName');
+  var copyButton=document.getElementById('copyChoice');
+  var clearButton=document.getElementById('clearChoice');
+  var toast=document.getElementById('toast');
+  var toastTimer=null;
+  var currentChoice=null;
+
+  function showToast(message){
+    toast.textContent=message;
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer=setTimeout(function(){toast.classList.remove('show');},1800);
+  }
+
+  function resetButtons(){
+    options.forEach(function(option){
+      option.classList.remove('selected');
+      option.querySelector('.select-btn').textContent='选择此风格';
+    });
+  }
+
+  function showBar(){
+    if(bar.hidden){
+      bar.hidden=false;
+      requestAnimationFrame(function(){bar.classList.add('show');});
+    } else {
+      bar.classList.add('show');
+    }
+  }
+
+  function hideBar(){
+    bar.classList.remove('show');
+    setTimeout(function(){bar.hidden=true;},250);
+  }
+
+  function selectStyle(id,message){
+    var option=options.find(function(item){return item.dataset.styleId===id;});
+    if(!option) return false;
+    resetButtons();
+    option.classList.add('selected');
+    option.querySelector('.select-btn').textContent='已选择此风格';
+    currentChoice={
+      id:option.dataset.styleId,
+      name:option.dataset.styleName,
+      time:new Date().toISOString()
+    };
+    choiceName.textContent=currentChoice.name;
+    try{localStorage.setItem(STORAGE_KEY,JSON.stringify(currentChoice));}catch(error){}
+    if(history.replaceState){history.replaceState(null,'','#'+currentChoice.id);}
+    showBar();
+    if(message) showToast(message);
+    return true;
+  }
+
+  function clearChoice(){
+    currentChoice=null;
+    resetButtons();
+    hideBar();
+    try{localStorage.removeItem(STORAGE_KEY);}catch(error){}
+    if(history.replaceState){history.replaceState(null,'',location.pathname+location.search);}
+    showToast('已清除选择');
+  }
+
+  function copyText(text){
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text)
+        .then(function(){showToast('已复制选择');})
+        .catch(function(){fallbackCopy(text);});
+    } else {
+      fallbackCopy(text);
+    }
+  }
+
+  function fallbackCopy(text){
+    var textarea=document.createElement('textarea');
+    textarea.value=text;
+    textarea.setAttribute('readonly','');
+    textarea.style.position='fixed';
+    textarea.style.opacity='0';
+    document.body.appendChild(textarea);
+    textarea.select();
+    try{document.execCommand('copy');showToast('已复制选择');}
+    catch(error){showToast('复制失败，请直接记下风格名称');}
+    document.body.removeChild(textarea);
+  }
+
+  options.forEach(function(option){
+    option.querySelector('.select-btn').addEventListener('click',function(){
+      selectStyle(option.dataset.styleId,'已选择“'+option.dataset.styleName+'”');
+    });
+  });
+
+  copyButton.addEventListener('click',function(){
+    if(currentChoice) copyText('我选择：'+currentChoice.name);
+  });
+
+  clearButton.addEventListener('click',clearChoice);
+
+  function init(){
+    var saved=null;
+    try{saved=JSON.parse(localStorage.getItem(STORAGE_KEY));}catch(error){saved=null;}
+    if(saved&&saved.id&&selectStyle(saved.id,false)) return;
+    var hashId=location.hash.replace('#','');
+    if(hashId) selectStyle(hashId,false);
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>

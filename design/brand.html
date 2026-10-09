@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>工时 · 品牌与图标</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:"PingFang SC","Microsoft YaHei",system-ui,sans-serif;background:#f4f4f2;color:#141414;padding:36px 28px 80px}
+  h1{font-size:22px;font-weight:800}
+  .lead{color:#666;font-size:14px;margin:6px 0 30px;max-width:860px;line-height:1.7}
+  h2{font-size:16px;font-weight:800;margin:40px 0 14px}
+  .row{display:flex;gap:28px;flex-wrap:wrap}
+  .opt{background:#fff;border-radius:18px;padding:22px;width:340px}
+  .opt h3{font-size:15px;margin-bottom:4px}
+  .opt p{font-size:12.5px;color:#777;line-height:1.7;margin-top:12px}
+  .sizes{display:flex;align-items:flex-end;gap:16px;margin-top:14px}
+  .sizes figure{text-align:center;font-size:11px;color:#999}
+  .sizes svg{display:block;margin-bottom:6px}
+  .crop{border-radius:50%;overflow:hidden;display:inline-block;line-height:0}
+  /* 模拟桌面 */
+  .home{width:300px;height:220px;border-radius:22px;padding:22px 18px;display:grid;grid-template-columns:repeat(4,1fr);gap:16px 8px;background:linear-gradient(160deg,#5b6b8c,#2c3346)}
+  .home.light{background:linear-gradient(160deg,#e9e3d6,#c9d3d9)}
+  .home div{display:flex;flex-direction:column;align-items:center;gap:5px;font-size:10.5px;color:#fff}
+  .home.light div{color:#222}
+  .home i{width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,.28);display:block}
+  .home.light i{background:rgba(0,0,0,.12)}
+  .home .me{line-height:0}
+  /* 字标 */
+  .wm{background:#fff;border-radius:18px;padding:30px;width:340px;display:flex;flex-direction:column;gap:26px}
+  .wm.dark{background:#141414;color:#fff}
+  .word{display:flex;align-items:center;gap:12px;font-weight:900;font-size:40px;letter-spacing:2px}
+  .word .bar{position:relative;width:64px;height:12px;border-radius:6px;background:#ececec}
+  .wm.dark .word .bar{background:#333}
+  .word .bar::after{content:"";position:absolute;left:26%;width:46%;top:0;bottom:0;border-radius:6px;background:#ff5b2e}
+  .word2{font-weight:900;font-size:40px;letter-spacing:2px;position:relative;display:inline-block;padding-bottom:10px}
+  .word2::after{content:"";position:absolute;left:18%;width:52%;bottom:0;height:6px;border-radius:3px;background:#ff5b2e}
+  .sm{font-size:12px;color:#888}
+  /* 启动页 */
+  .phone{width:250px;height:500px;border-radius:30px;box-shadow:0 0 0 7px #1b1b1b,0 18px 40px rgba(0,0,0,.2);background:#fff;position:relative;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px}
+  .phone .sb{width:120px;height:8px;border-radius:4px;background:#f1f1f1;position:relative;overflow:hidden}
+  .phone .sb::after{content:"";position:absolute;left:30%;top:0;bottom:0;width:0;border-radius:4px;background:#ff5b2e;animation:g 1.4s cubic-bezier(.2,.8,.2,1) infinite}
+  @keyframes g{0%{width:0}60%,100%{width:40%}}
+  .phone .cap{position:absolute;bottom:34px;font-size:11px;color:#aaa;letter-spacing:3px}
+  .pal{display:flex;gap:12px}
+  .pal span{width:92px;border-radius:12px;overflow:hidden;background:#fff;font-size:11.5px;color:#666}
+  .pal b{display:block;height:64px}
+  .pal em{display:block;padding:8px 10px;font-style:normal;line-height:1.5}
+</style>
+</head>
+<body>
+<h1>工时 · 品牌与图标</h1>
+<p class="lead">延续选定的「时间带」：白、黑，加一个橙。图标出了三个方向，每个都放了 192 / 72 / 48 px，以及安卓圆形裁切后的样子，再放到深色和浅色壁纸的桌面上看看。下面是字标和启动页。选一个图标方向就行，其他部分会跟着它定。</p>
+
+<h2>一 · 图标方向</h2>
+<div class="row">
+
+  <!-- 1 时间带 -->
+  <div class="opt">
+    <h3>① 时间带</h3>
+    <div class="sizes">
+      <figure><svg width="120" height="120" viewBox="0 0 108 108"><use href="#ic1"/></svg>192</figure>
+      <figure><svg width="56" height="56" viewBox="0 0 108 108"><use href="#ic1"/></svg>72</figure>
+      <figure><svg width="36" height="36" viewBox="0 0 108 108"><use href="#ic1"/></svg>48</figure>
+      <figure><span class="crop"><svg width="56" height="56" viewBox="0 0 108 108"><use href="#ic1"/></svg></span>圆形</figure>
+    </div>
+    <p>黑底上一条灰色轨道，中间一段橙色是上班时间，白色竖线是「现在」。和 App 首页的时间带是同一个图形，打开 App 时能对上。</p>
+  </div>
+
+  <!-- 2 工字 -->
+  <div class="opt">
+    <h3>② 「工」字时间带</h3>
+    <div class="sizes">
+      <figure><svg width="120" height="120" viewBox="0 0 108 108"><use href="#ic2"/></svg>192</figure>
+      <figure><svg width="56" height="56" viewBox="0 0 108 108"><use href="#ic2"/></svg>72</figure>
+      <figure><svg width="36" height="36" viewBox="0 0 108 108"><use href="#ic2"/></svg>48</figure>
+      <figure><span class="crop"><svg width="56" height="56" viewBox="0 0 108 108"><use href="#ic2"/></svg></span>圆形</figure>
+    </div>
+    <p>用粗笔画拼一个「工」字，下面那一横换成时间带，橙色一段就是今天上的班。中文用户一眼认得是「工时」，桌面上小尺寸也最好认。</p>
+  </div>
+
+  <!-- 3 橙底 -->
+  <div class="opt">
+    <h3>③ 橙底打卡</h3>
+    <div class="sizes">
+      <figure><svg width="120" height="120" viewBox="0 0 108 108"><use href="#ic3"/></svg>192</figure>
+      <figure><svg width="56" height="56" viewBox="0 0 108 108"><use href="#ic3"/></svg>72</figure>
+      <figure><svg width="36" height="36" viewBox="0 0 108 108"><use href="#ic3"/></svg>48</figure>
+      <figure><span class="crop"><svg width="56" height="56" viewBox="0 0 108 108"><use href="#ic3"/></svg></span>圆形</figure>
+    </div>
+    <p>整块橙色，中间一条白色时间带配黑色「现在」线。在桌面上最跳，一眼就能找到；代价是橙色面积大，和 App 里「橙只点一处」的克制不太一样。</p>
+  </div>
+</div>
+
+<h2>二 · 放到桌面上</h2>
+<div class="row">
+  <div class="home">
+    <div><i></i>相机</div><div><i></i>微信</div><div><span class="me"><svg width="48" height="48" viewBox="0 0 108 108"><g clip-path="url(#c)"><use href="#ic1"/></g></svg></span>工时 ①</div><div><i></i>日历</div>
+    <div><i></i>设置</div><div><span class="me"><svg width="48" height="48" viewBox="0 0 108 108"><g clip-path="url(#c)"><use href="#ic2"/></g></svg></span>工时 ②</div><div><i></i>钉钉</div><div><span class="me"><svg width="48" height="48" viewBox="0 0 108 108"><g clip-path="url(#c)"><use href="#ic3"/></g></svg></span>工时 ③</div>
+  </div>
+  <div class="home light">
+    <div><i></i>相机</div><div><i></i>微信</div><div><span class="me"><svg width="48" height="48" viewBox="0 0 108 108"><g clip-path="url(#c)"><use href="#ic1"/></g></svg></span>工时 ①</div><div><i></i>日历</div>
+    <div><i></i>设置</div><div><span class="me"><svg width="48" height="48" viewBox="0 0 108 108"><g clip-path="url(#c)"><use href="#ic2"/></g></svg></span>工时 ②</div><div><i></i>钉钉</div><div><span class="me"><svg width="48" height="48" viewBox="0 0 108 108"><g clip-path="url(#c)"><use href="#ic3"/></g></svg></span>工时 ③</div>
+  </div>
+</div>
+
+<h2>三 · 字标</h2>
+<div class="row">
+  <div class="wm">
+    <div class="word">工时<span class="bar"></span></div>
+    <div class="word2">工时</div>
+    <div class="sm">上：字后面跟一段时间带；下：字底下一截橙色，像下划线一样把今天的班画出来</div>
+  </div>
+  <div class="wm dark">
+    <div class="word">工时<span class="bar"></span></div>
+    <div class="word2">工时</div>
+    <div class="sm">深色底同样成立</div>
+  </div>
+</div>
+
+<h2>四 · 启动页与色板</h2>
+<div class="row" style="align-items:flex-start">
+  <div class="phone">
+    <svg width="84" height="84" viewBox="0 0 108 108"><g clip-path="url(#r)"><use href="#ic2"/></g></svg>
+    <div class="sb"></div>
+    <div class="cap">上 班 · 下 班 · 算 工 时</div>
+  </div>
+  <div>
+    <div class="pal">
+      <span><b style="background:#141414"></b><em>墨黑 #141414<br>数字、主按钮</em></span>
+      <span><b style="background:#ff5b2e"></b><em>时间橙 #FF5B2E<br>只给工作时段</em></span>
+      <span><b style="background:#f1f1f1"></b><em>轨道灰 #F1F1F1<br>一天的底</em></span>
+      <span><b style="background:#fff;box-shadow:inset 0 0 0 1px #eee"></b><em>纸白 #FFFFFF<br>背景</em></span>
+    </div>
+    <p class="sm" style="margin-top:16px;max-width:420px;line-height:1.8">启动页：白底，图标居中，下面一小段时间带从左长出来（循环播放的就是这个动作），等 App 加载完直接进入「今天」。橙色只用在「上班那一段」，图标、字标、启动页都守这一条。</p>
+  </div>
+</div>
+
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <clipPath id="c"><circle cx="54" cy="54" r="54"/></clipPath>
+    <clipPath id="r"><rect width="108" height="108" rx="26"/></clipPath>
+    <!-- 108 网格，安全区为中间直径 66 的圆 -->
+    <symbol id="ic1" viewBox="0 0 108 108">
+      <rect width="108" height="108" rx="24" fill="#141414"/>
+      <rect x="22" y="46" width="64" height="16" rx="8" fill="#3a3a3a"/>
+      <rect x="38" y="46" width="30" height="16" rx="8" fill="#ff5b2e"/>
+      <rect x="66" y="38" width="4" height="32" rx="2" fill="#fff"/>
+    </symbol>
+    <symbol id="ic2" viewBox="0 0 108 108">
+      <rect width="108" height="108" rx="24" fill="#fff"/>
+      <rect x="30" y="30" width="48" height="11" rx="5.5" fill="#141414"/>
+      <rect x="48.5" y="30" width="11" height="40" fill="#141414"/>
+      <rect x="24" y="66" width="60" height="13" rx="6.5" fill="#ececec"/>
+      <rect x="36" y="66" width="30" height="13" rx="6.5" fill="#ff5b2e"/>
+    </symbol>
+    <symbol id="ic3" viewBox="0 0 108 108">
+      <rect width="108" height="108" rx="24" fill="#ff5b2e"/>
+      <rect x="22" y="46" width="64" height="16" rx="8" fill="rgba(255,255,255,.35)"/>
+      <rect x="36" y="46" width="32" height="16" rx="8" fill="#fff"/>
+      <rect x="66" y="38" width="4" height="32" rx="2" fill="#141414"/>
+    </symbol>
+  </defs>
+</svg>
+</body>
+</html>

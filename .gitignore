@@ -1,0 +1,23 @@
+# 依赖
+node_modules/
+
+# Cloudflare / Wrangler 本地状态
+.wrangler/
+
+# IDE 与工程元数据
+.claude/
+.zcode/
+.vscode/
+.idea/
+
+# 系统临时文件与日志
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
+*.wip
+
+# 产物与缓存
+dist/
+tmp/
+scratch/

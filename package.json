@@ -1,0 +1,16 @@
+{
+  "name": "daka-worklog",
+  "version": "1.0.0",
+  "private": true,
+  "description": "极简工时打卡与多版式薪资核算应用",
+  "scripts": {
+    "dev": "http-server -p 5173 -c-1 .",
+    "check:emoji": "node verify_zero_emoji.js",
+    "test": "node verify_export_and_salary.js",
+    "deploy": "wrangler pages deploy . --project-name daka-worklog"
+  },
+  "devDependencies": {
+    "http-server": "^14.1.1",
+    "wrangler": "^4.149.0"
+  }
+}

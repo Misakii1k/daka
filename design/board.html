@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>工时 · 全状态设计稿</title>
+<link rel="stylesheet" href="../style.css">
+<style>
+  html,body{height:auto;background:#f4f4f2}
+  body{padding:36px 28px 80px;overscroll-behavior:auto}
+  .bh1{font-size:22px;font-weight:800}
+  .blead{color:#666;font-size:14px;margin:6px 0 10px;max-width:860px;line-height:1.7}
+  .bh2{font-size:16px;font-weight:800;margin:40px 0 16px}
+  .brow{display:flex;gap:30px;flex-wrap:wrap;align-items:flex-start}
+  .bfig{display:flex;flex-direction:column;gap:10px}
+  .bfig figcaption{font-size:12.5px;color:#777;max-width:300px;line-height:1.6}
+  .bfig figcaption b{color:#141414;display:block;font-size:13.5px}
+  /* 手机框：transform 让内部 fixed 元素相对手机定位 */
+  .phone{width:300px;height:650px;border-radius:28px;overflow:hidden;position:relative;background:#fff;box-shadow:0 0 0 7px #1b1b1b,0 18px 40px rgba(0,0,0,.18);transform:translateZ(0)}
+  .phone:has(.list .item),.phone:has(.grid2){height:790px}
+  .phone .view{display:block;min-height:0;padding:40px 20px 24px;animation:none}
+  .phone .main-btn{left:20px;right:20px;bottom:84px;height:60px}
+  .phone .big{font-size:50px}
+  .phone .big.sm{font-size:36px}
+  .phone .wk .t s{animation:none}
+  .phone .toast{opacity:1;transform:translate(-50%,0)}
+  .phone .sheet,.phone .sheet-mask{animation:none}
+  /* 组件板 */
+  .panel{background:#fff;border-radius:18px;padding:22px;width:300px}
+  .panel h4{font-size:13px;color:#888;font-weight:600;margin:18px 0 10px}
+  .panel h4:first-child{margin-top:0}
+  .sw{display:flex;gap:8px;flex-wrap:wrap}
+  .sw span{width:62px;font-size:10.5px;color:#666;line-height:1.4}
+  .sw i{display:block;height:40px;border-radius:8px;margin-bottom:4px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.06)}
+  .ty div{display:flex;align-items:baseline;justify-content:space-between;border-bottom:1px solid #eee;padding:6px 0}
+  .ty em{font-style:normal;font-size:11px;color:#999}
+  .demo-btn{position:static!important;width:100%;height:60px}
+</style>
+</head>
+<body>
+<div class="bh1">工时 · 全状态设计稿</div>
+<p class="blead">直接引用 App 的 style.css 画出来，所以这里的样子就是真机上的样子。每个页面的关键状态都并排摆在一起，看哪里不对直接说「第几张哪里」。规范细节见 DESIGN.md。</p>
+
+<!-- ========== 今天 ========== -->
+<div class="bh2">一 · 今天</div>
+<div class="brow">
+
+<figure class="bfig"><div class="phone">
+  <section class="view on">
+    <div class="date">10月7日 周三 · 未上班</div>
+    <div class="big num">0:00<small>已工作</small></div>
+    <div class="band"><div class="now" style="left:calc(36% - 1px)"></div></div>
+    <div class="ticks num"><span>0</span><span>6</span><span>12</span><span>18</span><span>24</span></div>
+    <div class="kv num"><div class="cell">上班<b>--:--</b></div><div class="cell">下班<b>--:--</b></div><div class="cell">标准<b>8h</b></div></div>
+  </section>
+  <button class="main-btn">上班打卡</button>
+  <nav class="tabs"><button class="on">今天</button><button>记录</button><button>统计</button></nav>
+</div><figcaption><b>1 · 未上班 / 第一次使用</b>只有「现在」竖线，没有橙色。</figcaption></figure>
+
+<figure class="bfig"><div class="phone">
+  <section class="view on">
+    <div class="date">10月7日 周三 · 上班中</div>
+    <div class="big num">6:42<small>已工作</small></div>
+    <div class="band"><div class="seg" style="left:37.4%;width:28%"></div><div class="now" style="left:calc(65.4% - 1px)"></div></div>
+    <div class="ticks num"><span>0</span><span>6</span><span>12</span><span>18</span><span>24</span></div>
+    <div class="kv num"><div class="cell">上班<b>08:58</b></div><div class="cell">下班<b>--:--</b></div><div class="cell">还差<b>1:18</b></div></div>
+  </section>
+  <div class="toast" style="bottom:164px">上班 08:58</div>
+  <button class="main-btn">下班打卡</button>
+  <nav class="tabs"><button class="on">今天</button><button>记录</button><button>统计</button></nav>
+</div><figcaption><b>2 · 上班中（刚打卡）</b>橙色时段从上班点长到现在，上方弹出轻提示。</figcaption></figure>
+
+<figure class="bfig"><div class="phone">
+  <section class="view on">
+    <div class="date">10月7日 周三 · 已下班</div>
+    <div class="big num">8:30<small>已工作</small></div>
+    <div class="band"><div class="seg" style="left:37.4%;width:39.6%"></div></div>
+    <div class="ticks num"><span>0</span><span>6</span><span>12</span><span>18</span><span>24</span></div>
+    <div class="kv num"><div class="cell">上班<b>08:58</b></div><div class="cell">下班<b>18:28</b></div><div class="cell">超出<b>0:30</b></div></div>
+  </section>
+  <button class="main-btn done">今天已打完卡</button>
+  <nav class="tabs"><button class="on">今天</button><button>记录</button><button>统计</button></nav>
+</div><figcaption><b>3 · 已下班</b>竖线隐藏，主按钮退成灰色。</figcaption></figure>
+
+<figure class="bfig"><div class="phone">
+  <section class="view on">
+    <div class="date">9月30日 周三 · 上班中 · 昨天 23:00 起</div>
+    <div class="big num">2:30<small>已工作</small></div>
+    <div class="band"><div class="seg" style="left:95.8%;width:4.2%"></div><div class="now" style="left:calc(100% - 1px)"></div></div>
+    <div class="ticks num"><span>0</span><span>6</span><span>12</span><span>18</span><span>24</span></div>
+    <div class="kv num"><div class="cell">上班<b>23:00</b></div><div class="cell">下班<b>--:--</b></div><div class="cell">还差<b>5:30</b></div></div>
+  </section>
+  <button class="main-btn">下班打卡</button>
+  <nav class="tabs"><button class="on">今天</button><button>记录</button><button>统计</button></nav>
+</div><figcaption><b>4 · 跨零点</b>凌晨 01:30 打开，仍记在昨天名下。</figcaption></figure>
+
+</div>
+
+<!-- ========== 记录 ========== -->
+<div class="bh2">二 · 记录</div>
+<div class="brow">
+
+<figure class="bfig"><div class="phone">
+  <section class="view on">
+    <div class="head"><button class="arrow">‹</button><div class="date">10月5日 – 10月11日</div><button class="arrow">›</button></div>
+    <div class="big num sm" style="text-align:center">25.4<small>小时</small></div>
+    <div class="wk num">
+      <div class="r"><i>周一</i><div class="t"><s style="left:37.5%;width:37.5%"></s></div><span class="h">8.0</span></div>
+      <div class="r"><i>周二</i><div class="t"><s style="left:36%;width:42%"></s></div><span class="h">9.1</span></div>
+      <div class="r today"><i>周三</i><div class="t"><s style="left:37.4%;width:28%;opacity:.55"></s></div><span class="h">上班中</span></div>
+      <div class="r"><i>周四</i><div class="t"><s class="m" style="left:38%;width:6%"></s></div><span class="h miss">缺卡</span></div>
+      <div class="r"><i>周五</i><div class="t"><s style="left:37.5%;width:36%"></s></div><span class="h">8.3</span></div>
+      <div class="r"><i>周六</i><div class="t"></div><span class="h"></span></div>
+      <div class="r"><i>周日</i><div class="t"></div><span class="h"></span></div>
+    </div>
+    <div class="head month"><button class="arrow">‹</button><div class="mtitle">2026年10月<small>41.6 h · 5 天</small></div><button class="arrow">›</button></div>
+    <div class="list num">
+      <div class="item"><span>7日 周三<small>08:58 上班</small></span><b>上班中</b></div>
+      <div class="item"><span>6日 周二<small>09:00 – 17:12 · 外出</small></span><b>7.2 h</b></div>
+      <div class="item miss"><span>5日 周一<small>只有下班 17:30</small></span><b>补卡</b></div>
+    </div>
+  </section>
+  <nav class="tabs"><button>今天</button><button class="on">记录</button><button>统计</button></nav>
+</div><figcaption><b>5 · 记录（有数据）</b>上半周时间条，下半月列表；缺卡统一橙色虚线。</figcaption></figure>
+
+<figure class="bfig"><div class="phone">
+  <section class="view on">
+    <div class="head"><button class="arrow">‹</button><div class="date">10月5日 – 10月11日</div><button class="arrow">›</button></div>
+    <div class="big num sm" style="text-align:center">0.0<small>小时</small></div>
+    <div class="wk num">
+      <div class="r"><i>周一</i><div class="t"></div><span class="h"></span></div>
+      <div class="r"><i>周二</i><div class="t"></div><span class="h"></span></div>
+      <div class="r today"><i>周三</i><div class="t"></div><span class="h"></span></div>
+      <div class="r"><i>周四</i><div class="t"></div><span class="h"></span></div>
+      <div class="r"><i>周五</i><div class="t"></div><span class="h"></span></div>
+      <div class="r"><i>周六</i><div class="t"></div><span class="h"></span></div>
+      <div class="r"><i>周日</i><div class="t"></div><span class="h"></span></div>
+    </div>
+    <div class="head month"><button class="arrow">‹</button><div class="mtitle">2026年10月<small>0.0 h · 0 天</small></div><button class="arrow">›</button></div>
+    <div class="list"><div class="empty">这个月还没有记录</div></div>
+  </section>
+  <nav class="tabs"><button>今天</button><button class="on">记录</button><button>统计</button></nav>
+</div><figcaption><b>6 · 记录（空）</b>只有一句话，不放插图。</figcaption></figure>
+
+<figure class="bfig"><div class="phone">
+  <section class="view on">
+    <div class="head"><button class="arrow">‹</button><div class="date">10月5日 – 10月11日</div><button class="arrow">›</button></div>
+    <div class="big num sm" style="text-align:center">25.4<small>小时</small></div>
+  </section>
+  <nav class="tabs"><button>今天</button><button class="on">记录</button><button>统计</button></nav>
+  <div class="sheet-mask"></div>
+  <form class="sheet" onsubmit="return false">
+    <div class="sheet-title">10月5日 周一</div>
+    <label class="row">上班<input type="time" value=""></label>
+    <label class="row">下班<input type="time" value="17:30"></label>
+    <label class="row">备注<input type="text" placeholder="可不填"></label>
+    <div class="sheet-act"><button class="ghost danger" type="button">删除这天</button><button class="ghost" type="button">取消</button><button class="solid" type="button">保存</button></div>
+  </form>
+</div><figcaption><b>7 · 补卡 / 编辑面板</b>从底部滑出，系统时间选择器。</figcaption></figure>
+
+</div>
+
+<!-- ========== 统计 ========== -->
+<div class="bh2">三 · 统计</div>
+<div class="brow">
+
+<figure class="bfig"><div class="phone">
+  <section class="view on">
+    <div class="head"><button class="arrow">‹</button><div class="date">2026年10月</div><button class="arrow">›</button></div>
+    <div class="big num" style="text-align:center;margin-top:14px">41.6<small>小时</small></div>
+    <div class="grid2 num"><div>出勤天数<b>6</b></div><div>日均工时<b>8.3 h</b></div><div>超出标准<b>1.6 h</b></div><div>缺卡<b class="warn">1 天</b></div></div>
+    <div class="miss-list">缺卡：10月5日</div>
+    <h3 class="sec">设置</h3>
+    <label class="set">午休扣除<span><input type="number" value="60"> 分钟</span></label>
+    <label class="set">标准日工时<span><input type="number" value="8"> 小时</span></label>
+    <div class="set">备份<span><button class="ghost" type="button">导出</button><span class="ghost">导入</span></span></div>
+  </section>
+  <nav class="tabs"><button>今天</button><button>记录</button><button class="on">统计</button></nav>
+</div><figcaption><b>8 · 统计 + 设置</b>主角是月总工时，缺卡数字唯一用橙色。</figcaption></figure>
+
+<!-- 组件板 -->
+<figure class="bfig"><div class="panel">
+  <h4>颜色</h4>
+  <div class="sw">
+    <span><i style="background:#141414"></i>ink<br>#141414</span>
+    <span><i style="background:#ff5b2e"></i>accent<br>#FF5B2E</span>
+    <span><i style="background:#777"></i>mute<br>#777</span>
+    <span><i style="background:#aaa"></i>faint<br>#AAA</span>
+    <span><i style="background:#f1f1f1"></i>track<br>#F1F1F1</span>
+    <span><i style="background:#eee"></i>line<br>#EEE</span>
+    <span><i style="background:#fff"></i>bg<br>#FFF</span>
+  </div>
+  <h4>字号</h4>
+  <div class="ty num">
+    <div><span style="font-size:40px;font-weight:800;letter-spacing:-1.5px;line-height:1">6:42</span><em>主数字 56/800</em></div>
+    <div><span style="font-size:20px;font-weight:700">08:58</span><em>数据值 20/700</em></div>
+    <div><span style="font-size:18px;font-weight:700">2026年10月</span><em>标题 18/700</em></div>
+    <div><span style="font-size:15px">6日 周二</span><em>正文 15</em></div>
+    <div><span style="font-size:12px;color:#888">上班</span><em>标签 12</em></div>
+  </div>
+  <h4>主按钮</h4>
+  <div style="display:flex;flex-direction:column;gap:10px">
+    <button class="main-btn demo-btn">下班打卡</button>
+    <button class="main-btn demo-btn done">今天已打完卡</button>
+  </div>
+  <h4>次要按钮</h4>
+  <div style="display:flex;gap:8px"><button class="ghost danger">删除这天</button><button class="ghost">取消</button><button class="solid">保存</button></div>
+  <h4>时间带</h4>
+  <div class="band" style="margin-top:0"><div class="seg" style="left:37%;width:28%"></div><div class="now" style="left:calc(65% - 1px)"></div></div>
+  <div class="wk" style="margin-top:10px">
+    <div class="r"><i>完整</i><div class="t"><s style="left:37%;width:38%;animation:none"></s></div><span class="h">8.2</span></div>
+    <div class="r"><i>进行</i><div class="t"><s style="left:37%;width:28%;opacity:.55;animation:none"></s></div><span class="h">上班中</span></div>
+    <div class="r"><i>缺卡</i><div class="t"><s class="m" style="left:38%;width:6%;animation:none"></s></div><span class="h miss">缺卡</span></div>
+  </div>
+</div><figcaption><b>9 · 组件与色板</b>和 DESIGN.md 的 token 一一对应。</figcaption></figure>
+
+</div>
+</body>
+</html>

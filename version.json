@@ -1,0 +1,8 @@
+{
+  "name": "daka-worklog",
+  "version": "1.0.0",
+  "buildTime": "2026-10-09 17:50:00",
+  "title": "工时打卡系统",
+  "releaseNotes": "1. 支持五套高质感工时核算凭单导出（热敏小票、复古工卡、现代报表、日历热力、记账便签）\n2. 适老化手写数字识别与软键盘双模输入\n3. 深色模式、字号缩放与触感反馈\n4. Cloudflare D1 与 WebDAV 自主网盘存储\n5. 首页悬浮云端更新检测与极速更新",
+  "downloadUrl": "https://daka-worklog.pages.dev"
+}

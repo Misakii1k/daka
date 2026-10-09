@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>工时记录 · 方向对比（第二轮）</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:"PingFang SC","Microsoft YaHei",system-ui,sans-serif;background:#e4e4e8;color:#222;padding:32px 24px 64px}
+  h1{font-size:22px;font-weight:600;margin-bottom:6px}
+  .lead{color:#666;font-size:14px;margin-bottom:28px;max-width:900px}
+  .row{display:flex;gap:36px;flex-wrap:wrap;justify-content:center}
+  .col{width:360px}
+  .pair{display:flex;flex-direction:column;gap:18px}
+  .phone{width:360px;height:640px;border-radius:28px;overflow:hidden;position:relative;box-shadow:0 18px 40px rgba(0,0,0,.18),0 0 0 8px #1b1b1b}
+  .phone.short{height:500px}
+  .card{margin-top:20px;background:#fff;border-radius:14px;padding:16px 18px;font-size:13px;line-height:1.7}
+  .card h2{font-size:16px;margin-bottom:6px}
+  .card dt{color:#888;float:left;width:44px}
+  .card dd{margin-left:48px}
+  .tabs{position:absolute;left:0;right:0;bottom:0;height:64px;display:flex;justify-content:space-around;align-items:center;font-size:12px}
+  .tabs span{display:flex;flex-direction:column;align-items:center;gap:4px}
+  .btn{transition:transform .12s ease;cursor:pointer}
+  .btn:active{transform:scale(.95)}
+  .num{font-variant-numeric:tabular-nums}
+
+  /* D 时间带 */
+  .d{background:#fff;color:#141414}
+  .d .pad{padding:40px 22px 0}
+  .d .date{font-size:14px;color:#777}
+  .d .big{font-size:56px;font-weight:800;letter-spacing:-1.5px;margin-top:6px;line-height:1}
+  .d .big small{font-size:20px;font-weight:600;color:#777;margin-left:4px;letter-spacing:0}
+  .d .band{position:relative;margin-top:28px;height:44px;background:#f1f1f1;border-radius:10px}
+  .d .band .seg{position:absolute;top:0;bottom:0;left:37%;width:28%;background:#ff5b2e;border-radius:10px}
+  .d .band .now{position:absolute;top:-6px;bottom:-6px;left:65%;width:2px;background:#141414}
+  .d .ticks{display:flex;justify-content:space-between;font-size:11px;color:#999;margin-top:6px}
+  .d .kv{display:flex;gap:0;margin-top:26px;border-top:1px solid #eee}
+  .d .kv div{flex:1;padding:14px 0;border-right:1px solid #eee;font-size:12px;color:#888}
+  .d .kv div:last-child{border-right:none;padding-left:14px}
+  .d .kv div:nth-child(2){padding-left:14px}
+  .d .kv b{display:block;font-size:20px;color:#141414;margin-top:2px}
+  .d .btn{position:absolute;left:22px;right:22px;bottom:84px;height:62px;border:none;border-radius:14px;background:#141414;color:#fff;font-size:18px;font-weight:700}
+  .d .tabs{border-top:1px solid #eee;color:#aaa}
+  .d .tabs .on{color:#141414;font-weight:700}
+  .d .wk{margin-top:6px}
+  .d .wk .r{display:flex;align-items:center;gap:10px;height:34px;font-size:12px;color:#888}
+  .d .wk .r i{font-style:normal;width:34px}
+  .d .wk .t{flex:1;position:relative;height:14px;background:#f4f4f4;border-radius:7px}
+  .d .wk .t s{position:absolute;top:0;bottom:0;background:#ff5b2e;border-radius:7px}
+  .d .wk .t s.m{background:none;border:1.5px dashed #ff5b2e}
+  .d .wk .h{width:36px;text-align:right;color:#141414;font-weight:600}
+
+  /* E 安卓原生 Material You */
+  .e{background:#f6f8f3;color:#1a1c19}
+  .e .bar{height:56px;display:flex;align-items:center;padding:0 20px;font-size:20px;margin-top:24px}
+  .e .hero{margin:6px 16px 0;background:#d4ecd0;border-radius:28px;padding:24px}
+  .e .hero .lb{font-size:13px;color:#3a4a38}
+  .e .hero .big{font-size:52px;font-weight:500;margin:4px 0 2px;color:#0f2a12}
+  .e .hero .sub{font-size:13px;color:#3a4a38}
+  .e .chips{display:flex;gap:8px;margin:14px 16px 0}
+  .e .chips span{flex:1;background:#fff;border:1px solid #c3c8bf;border-radius:16px;padding:12px;font-size:12px;color:#43483f}
+  .e .chips b{display:block;font-size:18px;color:#1a1c19;font-weight:500;margin-top:2px}
+  .e .fab{position:absolute;right:20px;bottom:92px;height:64px;padding:0 26px;border:none;border-radius:20px;background:#2f6a32;color:#fff;font-size:17px;font-weight:500;box-shadow:0 4px 10px rgba(0,0,0,.2)}
+  .e .tabs{background:#eaefe5;color:#43483f}
+  .e .tabs .ic{width:56px;height:28px;border-radius:14px;display:block}
+  .e .tabs .on .ic{background:#c4e8bd}
+  .e .tabs .on{color:#1a1c19;font-weight:600}
+  .e .list{margin:4px 16px;background:#fff;border-radius:20px;overflow:hidden}
+  .e .list div{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid #eef0ea;font-size:14px}
+  .e .list div:last-child{border:none}
+  .e .list small{display:block;color:#73796f;font-size:12px}
+  .e .list .miss{color:#ba1a1a}
+  .e .mhead{display:flex;justify-content:space-between;align-items:center;padding:40px 20px 10px;font-size:20px}
+  .e .mhead small{font-size:13px;color:#43483f}
+
+  /* F 表盘 */
+  .f{background:#f3efe9;color:#2b2622}
+  .f .pad{padding:38px 22px 0;text-align:center}
+  .f .date{font-size:14px;color:#8c837a}
+  .f svg{display:block;margin:14px auto 0}
+  .f .ctr{position:absolute;left:0;right:0;top:150px;text-align:center}
+  .f .ctr .big{font-size:46px;font-weight:700}
+  .f .ctr small{display:block;font-size:13px;color:#8c837a}
+  .f .legend{display:flex;justify-content:center;gap:26px;margin-top:10px;font-size:13px;color:#8c837a}
+  .f .legend b{color:#2b2622;font-size:17px;display:block}
+  .f .btn{position:absolute;left:50%;bottom:86px;transform:translateX(-50%);width:200px;height:56px;border:none;border-radius:28px;background:#c2410c;color:#fff;font-size:17px;font-weight:700}
+  .f .btn:active{transform:translateX(-50%) scale(.95)}
+  .f .tabs{color:#a59c92}
+  .f .tabs .on{color:#2b2622;font-weight:700}
+  .f .grid{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;margin-top:14px}
+  .f .grid i{font-style:normal;font-size:11px;color:#a59c92}
+  .f .grid span{display:flex;flex-direction:column;align-items:center;font-size:10px;color:#8c837a;gap:2px}
+</style>
+</head>
+<body>
+<h1>工时记录 · 第二轮：三个新方向</h1>
+<p class="lead">这一轮换了思路，不再在纸感、深色、热力格上打转：D 把一天画成一条时间带，E 直接用安卓原生的样子，F 把一天画成表盘。还是请你挑一个，或者说说哪一块有感觉。</p>
+
+<div class="row">
+
+<!-- D -->
+<div class="col"><div class="pair">
+  <div class="phone d"><div class="pad">
+    <div class="date">10月7日 周三 · 上班中</div>
+    <div class="big num">6:42<small>已工作</small></div>
+    <div class="band"><div class="seg"></div><div class="now"></div></div>
+    <div class="ticks num"><span>0</span><span>6</span><span>12</span><span>18</span><span>24</span></div>
+    <div class="kv num"><div>上班<b>08:58</b></div><div>预计下班<b>17:58</b></div><div>还差<b>1:18</b></div></div>
+  </div>
+  <button class="btn">下班打卡</button>
+  <div class="tabs"><span class="on">今天</span><span>记录</span><span>统计</span></div></div>
+
+  <div class="phone d short"><div class="pad">
+    <div class="date">本周 · 10月6日–12日</div>
+    <div class="big num" style="font-size:40px">35.8<small>小时</small></div>
+    <div class="wk num" style="margin-top:18px">
+      <div class="r"><i>周一</i><div class="t"><s style="left:37%;width:38%"></s></div><span class="h">8.2</span></div>
+      <div class="r"><i>周二</i><div class="t"><s style="left:36%;width:42%"></s></div><span class="h">9.5</span></div>
+      <div class="r"><i>周三</i><div class="t"><s style="left:37%;width:28%"></s></div><span class="h">6.7</span></div>
+      <div class="r"><i>周四</i><div class="t"><s class="m" style="left:38%;width:6%"></s></div><span class="h" style="color:#ff5b2e">缺卡</span></div>
+      <div class="r"><i>周五</i><div class="t"><s style="left:37%;width:37%"></s></div><span class="h">8.0</span></div>
+      <div class="r"><i>周六</i><div class="t"></div><span class="h"></span></div>
+      <div class="r"><i>周日</i><div class="t"></div><span class="h"></span></div>
+    </div>
+  </div>
+  <div class="tabs"><span>今天</span><span class="on">记录</span><span>统计</span></div></div>
+</div>
+<dl class="card"><h2>D 时间带</h2>
+  <dt>调性</dt><dd>白底、粗黑字、一个亮橙色。一天就是一条 0–24 点的横条，上了几点到几点一眼看清；记录页每天一条，像排班表</dd>
+  <dt>主色</dt><dd>白 + 黑 + 橙，缺卡用橙色虚线框</dd>
+  <dt>动效</dt><dd>打卡后橙色段从上班点一路长到现在；"现在"竖线每分钟往右挪；切到记录页，每天的条依次从左长出来</dd>
+  <dt>风险</dt><dd>比较"设计感"，月视图需要换成按周翻页，看整月不如日历直观</dd></dl>
+</div>
+
+<!-- E -->
+<div class="col"><div class="pair">
+  <div class="phone e">
+    <div class="bar">工时</div>
+    <div class="hero"><div class="lb">今天 · 08:58 上班</div><div class="big num">6 小时 42 分</div><div class="sub">距 8 小时还差 1 小时 18 分</div></div>
+    <div class="chips num"><span>本周<b>35.8 h</b></span><span>本月<b>41.6 h</b></span><span>缺卡<b>1 天</b></span></div>
+    <button class="fab btn">下班打卡</button>
+    <div class="tabs"><span class="on"><i class="ic"></i>今天</span><span><i class="ic"></i>月历</span><span><i class="ic"></i>统计</span></div>
+  </div>
+
+  <div class="phone e short">
+    <div class="mhead">10 月<small class="num">41.6 h · 5 天</small></div>
+    <div class="list num">
+      <div><span>10日 周六<small>08:40 – 18:46</small></span><b>10.1 h</b></div>
+      <div><span>9日 周五<small>09:02 – 17:02</small></span><b>8.0 h</b></div>
+      <div><span class="miss">8日 周四<small class="miss">只有上班 09:10</small></span><b class="miss">补卡</b></div>
+      <div><span>7日 周三<small>08:58 – 18:28</small></span><b>9.5 h</b></div>
+      <div><span>6日 周二<small>09:00 – 17:12</small></span><b>8.2 h</b></div>
+    </div>
+    <div class="tabs"><span><i class="ic"></i>今天</span><span class="on"><i class="ic"></i>月历</span><span><i class="ic"></i>统计</span></div>
+  </div>
+</div>
+<dl class="card"><h2>E 安卓原生</h2>
+  <dt>调性</dt><dd>照着安卓 Material You 的样子做：大圆角卡片、右下角打卡大按钮、底部胶囊导航。跟手机上其他 App 一个味道，装上就像系统自带</dd>
+  <dt>主色</dt><dd>可以跟随手机壁纸取色（这里用的是绿色），缺卡用系统红</dd>
+  <dt>动效</dt><dd>按钮按下有水波纹；打卡后按钮变形成"已下班"条；导航胶囊滑动切换</dd>
+  <dt>风险</dt><dd>辨识度低，好用但不特别；月历用列表呈现，适合补卡和核对，不如网格好看整体</dd></dl>
+</div>
+
+<!-- F -->
+<div class="col"><div class="pair">
+  <div class="phone f"><div class="pad">
+    <div class="date">10月7日 周三</div>
+    <svg width="250" height="250" viewBox="0 0 250 250">
+      <circle cx="125" cy="125" r="105" fill="none" stroke="#e4ddd3" stroke-width="18"/>
+      <circle cx="125" cy="125" r="105" fill="none" stroke="#c2410c" stroke-width="18" stroke-linecap="round" stroke-dasharray="184 476" transform="rotate(44 125 125)"/>
+      <g fill="#a59c92" font-size="11" text-anchor="middle"><text x="125" y="12">0</text><text x="243" y="129">6</text><text x="125" y="247">12</text><text x="7" y="129">18</text></g>
+    </svg>
+    <div class="legend num"><span>上班<b>08:58</b></span><span>标准<b>8 h</b></span><span>还差<b>1:18</b></span></div>
+  </div>
+  <div class="ctr num"><small>已工作</small><div class="big">6:42</div></div>
+  <button class="btn">下班打卡</button>
+  <div class="tabs"><span class="on">今天</span><span>月历</span><span>统计</span></div></div>
+
+  <div class="phone f short"><div class="pad">
+    <div class="date" style="font-size:18px;color:#2b2622;font-weight:700">十月 <span class="num" style="font-size:13px;color:#8c837a;font-weight:400">41.6 h</span></div>
+    <div class="grid num">
+      <i>一</i><i>二</i><i>三</i><i>四</i><i>五</i><i>六</i><i>日</i>
+      <span></span><span></span>
+      <span><svg width="34" height="34"><circle cx="17" cy="17" r="13" fill="none" stroke="#e4ddd3" stroke-width="4"/></svg>1</span>
+      <span><svg width="34" height="34"><circle cx="17" cy="17" r="13" fill="none" stroke="#e4ddd3" stroke-width="4"/></svg>2</span>
+      <span><svg width="34" height="34"><circle cx="17" cy="17" r="13" fill="none" stroke="#e4ddd3" stroke-width="4"/></svg>3</span>
+      <span><svg width="34" height="34"><circle cx="17" cy="17" r="13" fill="none" stroke="#e4ddd3" stroke-width="4"/></svg>4</span>
+      <span><svg width="34" height="34"><circle cx="17" cy="17" r="13" fill="none" stroke="#e4ddd3" stroke-width="4"/></svg>5</span>
+      <span><svg width="34" height="34"><circle cx="17" cy="17" r="13" fill="none" stroke="#e4ddd3" stroke-width="4"/><circle cx="17" cy="17" r="13" fill="none" stroke="#c2410c" stroke-width="4" stroke-dasharray="28 82" transform="rotate(44 17 17)"/></svg>6</span>
+      <span><svg width="34" height="34"><circle cx="17" cy="17" r="13" fill="none" stroke="#e4ddd3" stroke-width="4"/><circle cx="17" cy="17" r="13" fill="none" stroke="#c2410c" stroke-width="4" stroke-dasharray="32 82" transform="rotate(44 17 17)"/></svg>7</span>
+      <span><svg width="34" height="34"><circle cx="17" cy="17" r="13" fill="none" stroke="#c2410c" stroke-width="2" stroke-dasharray="3 3"/></svg><b style="color:#c2410c">8</b></span>
+      <span><svg width="34" height="34"><circle cx="17" cy="17" r="13" fill="none" stroke="#e4ddd3" stroke-width="4"/><circle cx="17" cy="17" r="13" fill="none" stroke="#c2410c" stroke-width="4" stroke-dasharray="27 82" transform="rotate(44 17 17)"/></svg>9</span>
+      <span><svg width="34" height="34"><circle cx="17" cy="17" r="13" fill="none" stroke="#e4ddd3" stroke-width="4"/><circle cx="17" cy="17" r="13" fill="none" stroke="#c2410c" stroke-width="4" stroke-dasharray="34 82" transform="rotate(40 17 17)"/></svg>10</span>
+    </div>
+  </div>
+  <div class="tabs"><span>今天</span><span class="on">月历</span><span>统计</span></div></div>
+</div>
+<dl class="card"><h2>F 表盘</h2>
+  <dt>调性</dt><dd>一天画成 24 小时表盘，上班到现在是一段弧，中间是已工作时长。月历每天一个小表盘，弧长就是那天干了多久，缺卡是虚线圈</dd>
+  <dt>主色</dt><dd>暖灰底 + 砖橙，温和不刺眼</dd>
+  <dt>动效</dt><dd>打卡时弧从上班点顺时针画到现在；中心数字滚动；月历小表盘依次画弧</dd>
+  <dt>风险</dt><dd>表盘占地方，首页信息量少；小表盘在小屏上要看仔细</dd></dl>
+</div>
+
+</div>
+</body>
+</html>

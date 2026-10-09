@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>发票主题长图渲染测试</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body { background: #e2e8f0; padding: 24px 12px; display: flex; flex-direction: column; align-items: center; }
+    .wrap { max-width: 520px; width: 100%; }
+    #canvas-container { margin-top: 20px; text-align: center; }
+    #canvas-container canvas { max-width: 100%; height: auto; box-shadow: 0 8px 30px rgba(0,0,0,0.15); border-radius: 8px; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <h2 style="text-align: center; margin-bottom: 16px; font-size: 20px;">发票主题工时薪资结算单预览</h2>
+  <div id="canvas-container"></div>
+</div>
+
+<script src="exporter.js"></script>
+<script>
+  const mockLog = {
+    '2026-10-01': { in: '08:30', out: '18:26', lunch: 60 },
+    '2026-10-02': { in: '08:30', out: '17:30', lunch: 60 },
+    '2026-10-03': { in: '09:00', out: '19:00', lunch: 60 },
+    '2026-10-04': { in: '08:30', out: '18:00', lunch: 60 },
+    '2026-10-05': { in: '08:30', out: '18:30', lunch: 60 },
+    '2026-10-08': { in: '08:30', out: '18:26', lunch: 60 },
+    '2026-10-09': { in: '08:30', out: '17:30', lunch: 60 }
+  };
+  const mockSettings = { lunch: 60, std: 8, wage: 30 };
+  const testMonth = new Date(2026, 9, 1);
+
+  const report = window.SalaryExporter.computeMonthReportData(testMonth, mockLog, mockSettings, 30, '张三（长辈）');
+  const canvas = window.SalaryExporter.renderInvoiceCanvas(report);
+  document.getElementById('canvas-container').appendChild(canvas);
+</script>
+</body>
+</html>
