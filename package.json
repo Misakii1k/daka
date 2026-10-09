@@ -1,6 +1,6 @@
 {
   "name": "daka-worklog",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "private": true,
   "description": "极简工时打卡与多版式薪资核算应用",
   "scripts": {

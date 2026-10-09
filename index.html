@@ -116,10 +116,16 @@
           <span class="settings-card-desc">界面主题与操作反馈</span>
         </div>
         <div class="settings-item-list">
-          <div class="settings-row">
+          <div class="settings-row theme-settings-row">
             <span>界面主题</span>
             <div class="row-right">
-              <select id="set-theme">
+              <div class="m3-seg-tabs" id="theme-seg-tabs" role="tablist">
+                <div class="m3-seg-indicator" id="theme-seg-indicator"></div>
+                <button type="button" class="m3-seg-tab on" data-theme="system">跟随系统</button>
+                <button type="button" class="m3-seg-tab" data-theme="light">浅色</button>
+                <button type="button" class="m3-seg-tab" data-theme="dark">深色</button>
+              </div>
+              <select id="set-theme" style="display:none;" aria-hidden="true">
                 <option value="system">跟随系统</option>
                 <option value="light">浅色模式</option>
                 <option value="dark">深色模式</option>
@@ -321,7 +327,7 @@
           <div class="settings-row">
             <span>当前安装版本</span>
             <div class="row-right">
-              <span class="storage-status-tag" id="set-current-version">v1.0.1</span>
+              <span class="storage-status-tag" id="set-current-version">v1.0.2</span>
             </div>
           </div>
           <div class="settings-row">
@@ -548,8 +554,8 @@
       <!-- 定时器左右滑动手感刻度盘 -->
       <div class="adj-dial-container" id="adj-dial-container">
         <div class="adj-dial-header">
-          <span id="adj-dial-title">左右滑动定时器调节</span>
-          <span class="dial-hint">左右滑拨 · 每次 5 分钟</span>
+          <span id="adj-dial-title">左右滑动标尺实时微调</span>
+          <span class="dial-hint" id="adj-dial-hint">左右滑拨 · 逐1分钟微调</span>
         </div>
         <div class="adj-dial-viewport" id="adj-dial-viewport">
           <div class="adj-dial-pointer"></div>
@@ -628,6 +634,84 @@
       <button type="button" class="em-act-btn primary" id="btn-download-apk" style="display:none">下载最新 APK 安装包</button>
       <button type="button" class="em-act-btn primary" id="btn-do-update">立即更新并载入</button>
       <button type="button" class="em-act-btn secondary" id="btn-cancel-update">稍后再说</button>
+    </div>
+  </div>
+</div>
+
+<!-- 全局通用自绘下拉抽屉选择器（替代原生select弹窗） -->
+<div class="m3-sheet-mask" id="custom-picker-mask" hidden></div>
+<div class="m3-bottom-sheet custom-picker-sheet" id="custom-picker-sheet" hidden>
+  <div class="m3-drag-handle"></div>
+  <div class="m3-sheet-header">
+    <div class="m3-sheet-title" id="custom-picker-title">请选择</div>
+    <button class="m3-sheet-close" id="custom-picker-close" type="button" aria-label="关闭">&times;</button>
+  </div>
+  <div class="m3-sheet-body">
+    <div class="custom-picker-options" id="custom-picker-options"></div>
+  </div>
+</div>
+
+<!-- 全局通用自绘双滚轮时间抽屉（替代原生type=time时钟弹窗） -->
+<div class="m3-sheet-mask" id="custom-time-mask" hidden></div>
+<div class="m3-bottom-sheet custom-time-sheet" id="custom-time-sheet" hidden>
+  <div class="m3-drag-handle"></div>
+  <div class="m3-sheet-header">
+    <div class="m3-sheet-title" id="custom-time-title">选择时间</div>
+    <button class="m3-sheet-close" id="custom-time-close" type="button" aria-label="关闭">&times;</button>
+  </div>
+  <div class="m3-sheet-body">
+    <div class="ctp-display-wrap">
+      <div class="ctp-time-display">
+        <span id="ctp-disp-h">08</span>
+        <span class="ctp-colon">:</span>
+        <span id="ctp-disp-m">30</span>
+      </div>
+      <div class="ctp-presets">
+        <button type="button" class="ctp-preset-chip" data-time="08:00">08:00</button>
+        <button type="button" class="ctp-preset-chip" data-time="08:30">08:30</button>
+        <button type="button" class="ctp-preset-chip" data-time="09:00">09:00</button>
+        <button type="button" class="ctp-preset-chip" data-time="12:00">12:00</button>
+        <button type="button" class="ctp-preset-chip" data-time="17:30">17:30</button>
+        <button type="button" class="ctp-preset-chip" data-time="18:00">18:00</button>
+      </div>
+    </div>
+    <div class="ctp-wheels-container">
+      <div class="ctp-wheel-col">
+        <div class="ctp-col-label">时 (00-23)</div>
+        <div class="ctp-wheel-viewport" id="ctp-wheel-h">
+          <div class="ctp-wheel-track" id="ctp-track-h"></div>
+          <div class="ctp-wheel-highlight"></div>
+        </div>
+      </div>
+      <div class="ctp-wheel-col">
+        <div class="ctp-col-label">分 (00-59)</div>
+        <div class="ctp-wheel-viewport" id="ctp-wheel-m">
+          <div class="ctp-wheel-track" id="ctp-track-m"></div>
+          <div class="ctp-wheel-highlight"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="m3-sheet-footer">
+    <div class="ctp-actions">
+      <button type="button" class="ghost" id="ctp-cancel-btn">取消</button>
+      <button type="button" class="solid" id="ctp-confirm-btn">确认时间</button>
+    </div>
+  </div>
+</div>
+
+<!-- 全局通用自绘确认模态弹窗（替代原生confirm弹窗） -->
+<div class="m3-sheet-mask" id="custom-confirm-mask" hidden></div>
+<div class="custom-confirm-modal" id="custom-confirm-modal" hidden>
+  <div class="ccm-card">
+    <div class="ccm-icon-wrap" id="ccm-icon-wrap">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    </div>
+    <div class="ccm-title" id="ccm-title">确认提示</div>
+    <div class="ccm-message" id="ccm-message">您确定要执行该操作吗？</div>
+    <div class="ccm-actions">
+      <button type="button" class="ccm-btn ghost" id="ccm-cancel-btn">取消</button>
+      <button type="button" class="ccm-btn solid" id="ccm-confirm-btn">确定</button>
     </div>
   </div>
 </div>

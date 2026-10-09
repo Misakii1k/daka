@@ -425,9 +425,16 @@
   });
 
   // 删除某天记录
-  $('e-del').addEventListener('click', () => {
+  $('e-del').addEventListener('click', async () => {
     if (!editingKey) return;
-    if (confirm(`确定要删除 ${editingKey} 的打卡记录吗？`)) {
+    const ok = await window.customConfirm({
+      title: '删除打卡记录',
+      message: `确定要删除 ${editingKey} 的打卡记录吗？删除后不可撤销。`,
+      confirmText: '删除记录',
+      cancelText: '取消',
+      isDanger: true
+    });
+    if (ok) {
       delete log[editingKey];
       saveLog();
       closeEditSheet();
@@ -505,18 +512,149 @@
   $('set-lunch').value = settings.lunch;
   $('set-std').value = settings.std;
 
-  // 主题切换（灵动渐变动效）
+  // 1. 主题分段胶囊切换器 (Segmented Tabs·平滑弹性滑块)
+  function updateThemeSegUI(mode) {
+    const tabs = document.querySelectorAll('#theme-seg-tabs .m3-seg-tab');
+    const indicator = $('theme-seg-indicator');
+    const modes = ['system', 'light', 'dark'];
+    const idx = modes.indexOf(mode);
+    tabs.forEach((tab, i) => {
+      tab.classList.toggle('on', i === (idx !== -1 ? idx : 0));
+    });
+    if (indicator && idx !== -1) {
+      indicator.style.transform = `translateX(${idx * 100}%)`;
+    }
+  }
+
+  const themeSegTabs = $('theme-seg-tabs');
+  if (themeSegTabs) {
+    themeSegTabs.querySelectorAll('.m3-seg-tab').forEach((btn, idx) => {
+      btn.addEventListener('click', () => {
+        const mode = btn.dataset.theme;
+        settings.themeMode = mode;
+        saveSet();
+        applyTheme(mode);
+        updateThemeSegUI(mode);
+        if ($('set-theme')) $('set-theme').value = mode;
+        Haptic.tap();
+        toast('已切换主题');
+      });
+    });
+    updateThemeSegUI(settings.themeMode || 'system');
+  }
+
   if ($('set-theme')) {
     $('set-theme').addEventListener('change', e => {
       settings.themeMode = e.target.value;
       saveSet();
       applyTheme(settings.themeMode);
-      Haptic.tap();
-      toast('已切换界面主题');
+      updateThemeSegUI(settings.themeMode);
     });
   }
 
-  // 文字大小切换
+  // 2. 全局通用自绘下拉抽屉选择器 (Custom Bottom Sheet Picker)
+  function openCustomPicker({ title = '请选择', options = [], currentValue = '', onSelect = null }) {
+    const sheet = $('custom-picker-sheet');
+    const mask = $('custom-picker-mask');
+    const titleEl = $('custom-picker-title');
+    const container = $('custom-picker-options');
+    if (!sheet || !mask || !container) return;
+
+    if (titleEl) titleEl.textContent = title;
+
+    container.innerHTML = options.map(opt => {
+      const isSelected = String(opt.value) === String(currentValue);
+      return `
+        <button type="button" class="custom-picker-item ${isSelected ? 'on' : ''}" data-val="${opt.value}">
+          <div class="custom-picker-item-label">
+            <span>${opt.label || opt.text || opt.value}</span>
+            ${opt.desc ? `<span class="custom-picker-item-desc">${opt.desc}</span>` : ''}
+          </div>
+          <div class="custom-picker-check">
+            ${isSelected ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>' : ''}
+          </div>
+        </button>
+      `;
+    }).join('');
+
+    container.querySelectorAll('.custom-picker-item').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const val = btn.dataset.val;
+        Haptic.tick();
+        if (typeof onSelect === 'function') onSelect(val);
+        closeCustomPicker();
+      });
+    });
+
+    mask.hidden = false;
+    sheet.hidden = false;
+  }
+
+  function closeCustomPicker() {
+    animateClose($('custom-picker-sheet'), 220);
+    animateClose($('custom-picker-mask'), 180);
+  }
+
+  if ($('custom-picker-close')) $('custom-picker-close').addEventListener('click', closeCustomPicker);
+  if ($('custom-picker-mask')) $('custom-picker-mask').addEventListener('click', closeCustomPicker);
+
+  // 包装原生 select 为统一自绘控件
+  function initCustomSelectEnhancer(selectId, pickerTitle) {
+    const select = $(selectId);
+    if (!select) return;
+
+    select.style.display = 'none';
+
+    let trigger = select.parentNode.querySelector(`.m3-picker-trigger[data-target="${selectId}"]`);
+    if (!trigger) {
+      trigger = document.createElement('button');
+      trigger.type = 'button';
+      trigger.className = 'm3-picker-trigger';
+      trigger.dataset.target = selectId;
+      trigger.innerHTML = `
+        <span class="m3-trigger-text"></span>
+        <svg class="m3-trigger-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+      `;
+      select.parentNode.insertBefore(trigger, select);
+    }
+
+    const updateTriggerText = () => {
+      const selectedOpt = select.options[select.selectedIndex];
+      const textSpan = trigger.querySelector('.m3-trigger-text');
+      if (textSpan && selectedOpt) {
+        textSpan.textContent = selectedOpt.text;
+      }
+    };
+
+    updateTriggerText();
+    select.addEventListener('change', updateTriggerText);
+
+    trigger.addEventListener('click', () => {
+      const opts = Array.from(select.options).map(o => ({
+        value: o.value,
+        label: o.text
+      }));
+      openCustomPicker({
+        title: pickerTitle || '请选择',
+        options: opts,
+        currentValue: select.value,
+        onSelect: val => {
+          if (select.value !== val) {
+            select.value = val;
+            select.dispatchEvent(new Event('change', { bubbles: true }));
+          }
+        }
+      });
+    });
+  }
+
+  // 初始化所有多项下拉配置项
+  initCustomSelectEnhancer('set-text-size', '选择文字大小');
+  initCustomSelectEnhancer('set-celebration', '选择打卡庆祝动效');
+  initCustomSelectEnhancer('set-hw-speed', '手写识别响应速度');
+  initCustomSelectEnhancer('em-theme-select', '选择工时单据样式');
+
+  // 文字大小切换监听
   if ($('set-text-size')) {
     $('set-text-size').addEventListener('change', e => {
       settings.textSize = e.target.value;
@@ -526,6 +664,250 @@
       toast('已调整文字大小');
     });
   }
+
+  // 3. 全局通用自绘双滚轮时间抽屉 (Custom Time Picker Sheet)
+  let activeTimeConfirmCallback = null;
+  let currentSelectedH = 8;
+  let currentSelectedM = 30;
+
+  function initTimeWheelData() {
+    const trackH = $('ctp-track-h');
+    const trackM = $('ctp-track-m');
+    if (!trackH || !trackM) return;
+
+    if (trackH.children.length === 0) {
+      let hHtml = '';
+      for (let h = 0; h < 24; h++) {
+        hHtml += `<div class="ctp-wheel-item" data-val="${h}">${pad(h)}</div>`;
+      }
+      trackH.innerHTML = hHtml;
+    }
+
+    if (trackM.children.length === 0) {
+      let mHtml = '';
+      for (let m = 0; m < 60; m++) {
+        mHtml += `<div class="ctp-wheel-item" data-val="${m}">${pad(m)}</div>`;
+      }
+      trackM.innerHTML = mHtml;
+    }
+  }
+
+  function scrollWheelToValue(viewportEl, val, smooth = true) {
+    if (!viewportEl) return;
+    const itemH = 38;
+    viewportEl.scrollTo({
+      top: val * itemH,
+      behavior: smooth ? 'smooth' : 'auto'
+    });
+  }
+
+  function setupWheelScrollListener(viewportEl, onSelect) {
+    if (!viewportEl || viewportEl.dataset.hasListener) return;
+    viewportEl.dataset.hasListener = 'true';
+    const itemH = 38;
+    let timer = null;
+
+    const onScroll = () => {
+      clearTimeout(timer);
+      const scrollTop = viewportEl.scrollTop;
+      const idx = Math.max(0, Math.round(scrollTop / itemH));
+      const items = viewportEl.querySelectorAll('.ctp-wheel-item');
+      items.forEach((it, i) => {
+        it.classList.toggle('on', i === idx);
+      });
+      timer = setTimeout(() => {
+        if (typeof onSelect === 'function') onSelect(idx);
+      }, 50);
+    };
+
+    viewportEl.addEventListener('scroll', onScroll, { passive: true });
+
+    viewportEl.addEventListener('click', e => {
+      const it = e.target.closest('.ctp-wheel-item');
+      if (!it) return;
+      const val = Number(it.dataset.val);
+      scrollWheelToValue(viewportEl, val, true);
+      Haptic.tick();
+    });
+  }
+
+  function openCustomTimePicker({ title = '选择时间', initialTime = '08:30', onConfirm = null }) {
+    const sheet = $('custom-time-sheet');
+    const mask = $('custom-time-mask');
+    const titleEl = $('custom-time-title');
+    if (!sheet || !mask) return;
+
+    if (titleEl) titleEl.textContent = title;
+    activeTimeConfirmCallback = onConfirm;
+
+    initTimeWheelData();
+
+    const parts = (initialTime || '08:30').split(':');
+    currentSelectedH = parseInt(parts[0], 10) || 8;
+    currentSelectedM = parseInt(parts[1], 10) || 0;
+
+    const dispH = $('ctp-disp-h');
+    const dispM = $('ctp-disp-m');
+    if (dispH) dispH.textContent = pad(currentSelectedH);
+    if (dispM) dispM.textContent = pad(currentSelectedM);
+
+    const vh = $('ctp-wheel-h');
+    const vm = $('ctp-wheel-m');
+
+    setupWheelScrollListener(vh, h => {
+      currentSelectedH = Math.min(23, Math.max(0, h));
+      if (dispH) dispH.textContent = pad(currentSelectedH);
+      Haptic.tick();
+    });
+
+    setupWheelScrollListener(vm, m => {
+      currentSelectedM = Math.min(59, Math.max(0, m));
+      if (dispM) dispM.textContent = pad(currentSelectedM);
+      Haptic.tick();
+    });
+
+    mask.hidden = false;
+    sheet.hidden = false;
+
+    setTimeout(() => {
+      scrollWheelToValue(vh, currentSelectedH, false);
+      scrollWheelToValue(vm, currentSelectedM, false);
+      const itemsH = vh.querySelectorAll('.ctp-wheel-item');
+      itemsH.forEach((it, i) => it.classList.toggle('on', i === currentSelectedH));
+      const itemsM = vm.querySelectorAll('.ctp-wheel-item');
+      itemsM.forEach((it, i) => it.classList.toggle('on', i === currentSelectedM));
+    }, 60);
+  }
+
+  function closeCustomTimePicker() {
+    animateClose($('custom-time-sheet'), 220);
+    animateClose($('custom-time-mask'), 180);
+    activeTimeConfirmCallback = null;
+  }
+
+  if ($('custom-time-close')) $('custom-time-close').addEventListener('click', closeCustomTimePicker);
+  if ($('custom-time-mask')) $('custom-time-mask').addEventListener('click', closeCustomTimePicker);
+  if ($('ctp-cancel-btn')) $('ctp-cancel-btn').addEventListener('click', closeCustomTimePicker);
+
+  if ($('ctp-confirm-btn')) {
+    $('ctp-confirm-btn').addEventListener('click', () => {
+      const timeStr = `${pad(currentSelectedH)}:${pad(currentSelectedM)}`;
+      if (typeof activeTimeConfirmCallback === 'function') {
+        activeTimeConfirmCallback(timeStr);
+      }
+      Haptic.success();
+      closeCustomTimePicker();
+    });
+  }
+
+  document.querySelectorAll('.ctp-preset-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const time = chip.dataset.time;
+      if (!time) return;
+      const [h, m] = time.split(':').map(Number);
+      currentSelectedH = h;
+      currentSelectedM = m;
+      if ($('ctp-disp-h')) $('ctp-disp-h').textContent = pad(h);
+      if ($('ctp-disp-m')) $('ctp-disp-m').textContent = pad(m);
+      scrollWheelToValue($('ctp-wheel-h'), h, true);
+      scrollWheelToValue($('ctp-wheel-m'), m, true);
+      Haptic.tap();
+    });
+  });
+
+  function setupCustomTimeInputs() {
+    const timeInputs = document.querySelectorAll('input[type="time"]');
+    timeInputs.forEach(input => {
+      input.setAttribute('readonly', 'readonly');
+      input.style.cursor = 'pointer';
+
+      input.addEventListener('click', e => {
+        e.preventDefault();
+        e.stopPropagation();
+        const currentVal = input.value || '08:30';
+        let title = '选择时间';
+        const label = input.closest('label');
+        if (label) {
+          title = label.textContent.trim().replace(/:|：/g, '').slice(0, 10);
+        } else if (input.id.includes('in')) {
+          title = '选择上班时间';
+        } else if (input.id.includes('out')) {
+          title = '选择下班时间';
+        }
+
+        openCustomTimePicker({
+          title,
+          initialTime: currentVal,
+          onConfirm: selectedTime => {
+            input.value = selectedTime;
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+          }
+        });
+      });
+    });
+  }
+
+  // 拦截全局时间输入
+  setupCustomTimeInputs();
+
+  // 4. 全局通用自绘确认模态弹窗 (替代原生 confirm)
+  window.customConfirm = function({ title = '操作确认', message = '', confirmText = '确定', cancelText = '取消', isDanger = false } = {}) {
+    return new Promise(resolve => {
+      const modal = $('custom-confirm-modal');
+      const mask = $('custom-confirm-mask');
+      const titleEl = $('ccm-title');
+      const msgEl = $('ccm-message');
+      const confirmBtn = $('ccm-confirm-btn');
+      const cancelBtn = $('ccm-cancel-btn');
+      const iconWrap = $('ccm-icon-wrap');
+
+      if (!modal || !mask) {
+        resolve(window.confirm(message || title));
+        return;
+      }
+
+      if (titleEl) titleEl.textContent = title;
+      if (msgEl) msgEl.textContent = message;
+      if (confirmBtn) {
+        confirmBtn.textContent = confirmText;
+        confirmBtn.classList.toggle('danger', !!isDanger);
+      }
+      if (cancelBtn) cancelBtn.textContent = cancelText;
+      if (iconWrap) iconWrap.classList.toggle('danger', !!isDanger);
+
+      const cleanup = res => {
+        modal.classList.add('closing');
+        animateClose(mask, 180);
+        setTimeout(() => {
+          modal.hidden = true;
+          modal.classList.remove('closing');
+        }, 180);
+        confirmBtn.onclick = null;
+        cancelBtn.onclick = null;
+        mask.onclick = null;
+        resolve(res);
+      };
+
+      confirmBtn.onclick = () => {
+        Haptic.tick();
+        cleanup(true);
+      };
+
+      cancelBtn.onclick = () => {
+        Haptic.tap();
+        cleanup(false);
+      };
+
+      mask.onclick = () => {
+        cleanup(false);
+      };
+
+      modal.classList.remove('closing');
+      mask.hidden = false;
+      modal.hidden = false;
+    });
+  };
 
   // 触感反馈开关
   if ($('set-haptic')) {
@@ -815,7 +1197,13 @@
         toast('网盘中没有打卡记录');
         return;
       }
-      if (!confirm(`从网盘恢复 ${cloudKeys.length} 天打卡记录，确定合并吗？`)) return;
+      const ok = await window.customConfirm({
+        title: '网盘数据合并',
+        message: `从网盘恢复 ${cloudKeys.length} 天打卡记录，确定与本地数据合并吗？`,
+        confirmText: '合并恢复',
+        cancelText: '取消'
+      });
+      if (!ok) return;
       log = Object.assign({}, log, res.data.log);
       saveLog();
       renderAll();
@@ -892,12 +1280,19 @@
     const f = e.target.files[0];
     if (!f) return;
     const rd = new FileReader();
-    rd.onload = () => {
+    rd.onload = async () => {
       try {
         const data = JSON.parse(rd.result);
         if (!data || typeof data.log !== 'object') throw new Error();
         const n = Object.keys(data.log).length;
-        if (!confirm(`导入 ${n} 天记录，会覆盖当前所有记录，确定吗？`)) return;
+        const ok = await window.customConfirm({
+          title: '覆盖导入确认',
+          message: `导入 ${n} 天打卡记录，会覆盖当前设备上的所有记录，确定要导入吗？`,
+          confirmText: '确定覆盖',
+          cancelText: '取消',
+          isDanger: true
+        });
+        if (!ok) return;
         log = data.log;
         if (data.settings) settings = Object.assign({ lunch: 60, std: 8, wage: 30, userName: '' }, data.settings);
         saveLog(); saveSet();
@@ -1678,9 +2073,16 @@
   // 向导内快捷删除已有记录
   const wizDelBtn = $('wiz-del-btn');
   if (wizDelBtn) {
-    wizDelBtn.addEventListener('click', () => {
+    wizDelBtn.addEventListener('click', async () => {
       if (!wizKey) return;
-      if (confirm(`确定要删除 ${wizKey} 的打卡记录吗？`)) {
+      const ok = await window.customConfirm({
+        title: '删除打卡记录',
+        message: `确定要删除 ${wizKey} 的打卡记录吗？`,
+        confirmText: '删除记录',
+        cancelText: '取消',
+        isDanger: true
+      });
+      if (ok) {
         delete log[wizKey];
         saveLog();
         closeWizard();
@@ -2026,12 +2428,98 @@
   let adjData = { inTime: '08:30', outTime: '17:30', lunchMin: 60 };
   let adjActivePart = 'in'; // 'in' | 'out' | 'lunch'
 
-  // ---------- 定时器水平滑动刻度盘 (左右滑动手感高精度微调) ----------
+  // ---------- 真实物理微调标尺刻度盘 (左右滑动毫秒级跟手·逐1分钟微调) ----------
   let dialStartX = 0;
-  let dialStartMin = 0;
+  let dialStartValue = 0;
   let isDialDragging = false;
   let isDialInitialized = false;
-  const PIXELS_PER_5MIN = 12;
+  let lastDeltaMinutes = 0;
+  const PIXELS_PER_MINUTE = 8; // 每分钟对应的刻度像素宽度
+  const RULER_HALF_SPAN = 90;  // 视口前后覆盖 90 分钟
+
+  function getActivePartValue() {
+    if (adjActivePart === 'lunch') return adjData.lunchMin;
+    if (adjActivePart === 'in') return toMin(adjData.inTime);
+    return toMin(adjData.outTime);
+  }
+
+  function pulseBigVal(el) {
+    if (!el) return;
+    el.classList.remove('num-ticker-update');
+    void el.offsetWidth;
+    el.classList.add('num-ticker-update');
+  }
+
+  function setActivePartValue(newMin) {
+    if (adjActivePart === 'lunch') {
+      const clamped = Math.max(0, Math.min(240, newMin));
+      if (clamped !== adjData.lunchMin) {
+        adjData.lunchMin = clamped;
+        Haptic.tick();
+        pulseBigVal($('adj-lunch-val'));
+        updateAdjustSheetUI();
+      }
+    } else {
+      let normMin = newMin % 1440;
+      if (normMin < 0) normMin += 1440;
+      const timeStr = `${pad(Math.floor(normMin / 60))}:${pad(normMin % 60)}`;
+      if (adjActivePart === 'in') {
+        if (timeStr !== adjData.inTime) {
+          adjData.inTime = timeStr;
+          Haptic.tick();
+          pulseBigVal($('adj-in-val'));
+          updateAdjustSheetUI();
+        }
+      } else {
+        if (timeStr !== adjData.outTime) {
+          adjData.outTime = timeStr;
+          Haptic.tick();
+          pulseBigVal($('adj-out-val'));
+          updateAdjustSheetUI();
+        }
+      }
+    }
+  }
+
+  function renderDialTicks(baseMin, isLunch = false) {
+    const track = $('adj-dial-track');
+    if (!track) return;
+
+    let ticksHtml = '';
+    for (let delta = -RULER_HALF_SPAN; delta <= RULER_HALF_SPAN; delta++) {
+      const currentMin = baseMin + delta;
+      const isMajor = delta % 15 === 0;
+      const isMed = delta % 5 === 0 && !isMajor;
+      const cls = isMajor ? 'major' : (isMed ? 'med' : '');
+
+      let label = '';
+      if (isMajor) {
+        if (isLunch) {
+          const lMin = Math.max(0, currentMin);
+          label = `<span class="tick-label">${lMin}分</span>`;
+        } else {
+          let normMin = currentMin % 1440;
+          if (normMin < 0) normMin += 1440;
+          const h = Math.floor(normMin / 60);
+          const m = normMin % 60;
+          label = `<span class="tick-label">${pad(h)}:${pad(m)}</span>`;
+        }
+      }
+
+      ticksHtml += `<div class="adj-dial-tick ${cls}" data-delta="${delta}"><div class="tick-line"></div>${label}</div>`;
+    }
+
+    track.innerHTML = ticksHtml;
+    const centerOffset = -(RULER_HALF_SPAN * PIXELS_PER_MINUTE + PIXELS_PER_MINUTE / 2);
+    track.style.transition = 'none';
+    track.style.transform = `translateX(${centerOffset}px)`;
+    track.dataset.centerOffset = centerOffset;
+  }
+
+  function refreshDialRuler() {
+    const val = getActivePartValue();
+    renderDialTicks(val, adjActivePart === 'lunch');
+  }
 
   function initDialScroller() {
     if (isDialInitialized) return;
@@ -2040,73 +2528,51 @@
     if (!track || !viewport) return;
     isDialInitialized = true;
 
-    // 动态生成 -120分钟 到 +120分钟 的刻度线
-    let ticksHtml = '';
-    for (let delta = -120; delta <= 120; delta += 5) {
-      const isMajor = delta % 30 === 0;
-      const isMed = delta % 15 === 0 && !isMajor;
-      const cls = isMajor ? 'major' : (isMed ? 'med' : '');
-      const sign = delta > 0 ? `+${delta}` : (delta === 0 ? '0' : `${delta}`);
-      const label = isMajor ? `<span class="tick-label">${sign}</span>` : '';
-      ticksHtml += `<div class="adj-dial-tick ${cls}" data-delta="${delta}"><div class="tick-line"></div>${label}</div>`;
-    }
-    track.innerHTML = ticksHtml;
+    refreshDialRuler();
 
     viewport.addEventListener('pointerdown', e => {
       isDialDragging = true;
       dialStartX = e.clientX;
+      dialStartValue = getActivePartValue();
+      lastDeltaMinutes = 0;
       viewport.setPointerCapture(e.pointerId);
-      if (adjActivePart === 'lunch') {
-        dialStartMin = adjData.lunchMin;
-      } else if (adjActivePart === 'in') {
-        dialStartMin = toMin(adjData.inTime);
-      } else {
-        dialStartMin = toMin(adjData.outTime);
-      }
       viewport.style.cursor = 'grabbing';
+      track.style.transition = 'none';
     });
 
     viewport.addEventListener('pointermove', e => {
       if (!isDialDragging) return;
       const dx = e.clientX - dialStartX;
-      const deltaMinutes = -Math.round(dx / PIXELS_PER_5MIN) * 5;
+      const centerOffset = Number(track.dataset.centerOffset || 0);
 
-      let newMin = dialStartMin + deltaMinutes;
-      if (adjActivePart === 'lunch') {
-        newMin = Math.max(0, Math.min(240, newMin));
-        if (newMin !== adjData.lunchMin) {
-          adjData.lunchMin = newMin;
-          Haptic.tick();
-          updateAdjustSheetUI();
-        }
-      } else {
-        if (newMin < 0) newMin += 1440;
-        if (newMin >= 1440) newMin %= 1440;
-        const newTimeStr = `${pad(Math.floor(newMin / 60))}:${pad(newMin % 60)}`;
-        if (adjActivePart === 'in' && newTimeStr !== adjData.inTime) {
-          adjData.inTime = newTimeStr;
-          Haptic.tick();
-          updateAdjustSheetUI();
-        } else if (adjActivePart === 'out' && newTimeStr !== adjData.outTime) {
-          adjData.outTime = newTimeStr;
-          Haptic.tick();
-          updateAdjustSheetUI();
-        }
+      // 1. 刻度条画面 100% 毫秒级跟手位移
+      track.style.transform = `translateX(${centerOffset + dx}px)`;
+
+      // 2. 逐 1 分钟精准步进增减 (自然手感：向右拨时间减少，向左拨时间增加)
+      const deltaMinutes = -Math.round(dx / PIXELS_PER_MINUTE);
+
+      if (deltaMinutes !== lastDeltaMinutes) {
+        lastDeltaMinutes = deltaMinutes;
+        const targetMin = dialStartValue + deltaMinutes;
+        setActivePartValue(targetMin);
       }
-
-      const visualOffset = (dx % (PIXELS_PER_5MIN * 6));
-      track.style.transform = `translateX(${visualOffset}px)`;
     });
 
     const endDrag = e => {
       if (!isDialDragging) return;
       isDialDragging = false;
       viewport.style.cursor = '';
-      track.style.transition = 'transform 0.2s var(--ease-fluid)';
-      track.style.transform = 'translateX(0px)';
+
+      const centerOffset = Number(track.dataset.centerOffset || 0);
+      const snappedDx = -lastDeltaMinutes * PIXELS_PER_MINUTE;
+
+      // 磁吸对齐平滑动画
+      track.style.transition = 'transform 0.22s cubic-bezier(0.34, 1.4, 0.64, 1)';
+      track.style.transform = `translateX(${centerOffset + snappedDx}px)`;
+
       setTimeout(() => {
-        track.style.transition = 'none';
-      }, 220);
+        refreshDialRuler();
+      }, 230);
     };
 
     viewport.addEventListener('pointerup', endDrag);
@@ -2140,6 +2606,8 @@
         el.classList.remove('on');
       }
     });
+    // 切换部位后刷新刻度尺到该部位当前时间
+    refreshDialRuler();
   }
 
   function openAdjustSheet(initialPart = 'in') {
@@ -2205,7 +2673,7 @@
       const tab = e.target.closest('.adj-tab');
       if (!tab) return;
       switchAdjustPart(tab.dataset.part);
-      if (navigator.vibrate) navigator.vibrate(10);
+      Haptic.tap();
     });
   }
 
@@ -2216,19 +2684,24 @@
       const delta = Number(btn.dataset.delta) || 0;
       if (type === 'in') {
         adjData.inTime = shiftTimeMinutes(adjData.inTime, delta);
+        pulseBigVal($('adj-in-val'));
       } else if (type === 'out') {
         adjData.outTime = shiftTimeMinutes(adjData.outTime, delta);
+        pulseBigVal($('adj-out-val'));
       }
+      refreshDialRuler();
       updateAdjustSheetUI();
-      if (navigator.vibrate) navigator.vibrate(10);
+      Haptic.tick();
     });
   });
 
   document.querySelectorAll('#adj-lunch-chips .adj-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       adjData.lunchMin = Number(btn.dataset.lunch) || 0;
+      pulseBigVal($('adj-lunch-val'));
+      refreshDialRuler();
       updateAdjustSheetUI();
-      if (navigator.vibrate) navigator.vibrate(10);
+      Haptic.tick();
     });
   });
 

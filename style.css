@@ -378,18 +378,18 @@ select{
   overflow-y: auto;
   overscroll-behavior: contain;
   box-shadow: 0 -8px 32px rgba(15,23,42,.12);
-  animation: m3SheetUp var(--m3-dur-med) var(--m3-easing-decelerate);
+  animation: m3SheetUp var(--m3-dur-med) var(--ease-spring);
 }
 .sheet.closing, .m3-bottom-sheet.closing{
-  animation: m3SheetDown var(--m3-dur-short) var(--m3-easing-accelerate) forwards;
+  animation: m3SheetDown 0.22s var(--ease-fluid) forwards;
 }
 .sheet[hidden], .sheet-mask[hidden], .m3-bottom-sheet[hidden], .m3-sheet-mask[hidden]{
   display: none !important;
 }
 @keyframes m3FadeIn{from{opacity:0}to{opacity:1}}
 @keyframes m3FadeOut{from{opacity:1}to{opacity:0}}
-@keyframes m3SheetUp{from{transform:translateY(100%)}to{transform:none}}
-@keyframes m3SheetDown{from{transform:none}to{transform:translateY(100%)}}
+@keyframes m3SheetUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+@keyframes m3SheetDown{from{transform:translateY(0)}to{transform:translateY(100%)}}
 
 .m3-drag-handle{
   width: 36px;
@@ -648,39 +648,44 @@ select{
 .adj-summary-bar strong{font-size:16px;color:var(--md-ink)}
 .adj-summary-bar span:last-child span{font-weight:800;color:#b91c1c;font-size:16px}
 
-/* 定时器滚轮刻度盘 (左右滑动高精度微调) */
+/* 真实物理微调标尺刻度盘 (左右滑动毫秒级跟手·逐1分钟微调) */
 .adj-dial-container{
   width: 100%;
-  margin: 4px 0 14px;
+  margin: 6px 0 16px;
   position: relative;
   background: var(--md-surface-container-high);
-  border-radius: 16px;
-  padding: 8px 12px 6px;
-  border: 1px solid var(--md-outline-variant);
+  border-radius: 20px;
+  padding: 10px 14px 8px;
+  border: 1.5px solid var(--md-outline-variant);
   user-select: none;
   touch-action: none;
+  box-shadow: inset 0 2px 6px rgba(0,0,0,.03);
 }
 .adj-dial-header{
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 11.5px;
+  font-size: 12px;
   color: var(--md-mute);
-  font-weight: 600;
-  margin-bottom: 4px;
+  font-weight: 700;
+  margin-bottom: 6px;
 }
 .adj-dial-header .dial-hint{
   color: var(--md-accent);
-  font-weight: 700;
+  font-weight: 800;
+  font-size: 11.5px;
+  background: rgba(255, 91, 46, .08);
+  padding: 2px 8px;
+  border-radius: 8px;
 }
 .adj-dial-viewport{
   position: relative;
   width: 100%;
-  height: 52px;
+  height: 64px;
   overflow: hidden;
   cursor: grab;
-  mask-image: linear-gradient(to right, transparent, #000 15%, #000 85%, transparent);
-  -webkit-mask-image: linear-gradient(to right, transparent, #000 15%, #000 85%, transparent);
+  mask-image: linear-gradient(to right, transparent, #000 18%, #000 82%, transparent);
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 18%, #000 82%, transparent);
 }
 .adj-dial-viewport:active{
   cursor: grabbing;
@@ -695,7 +700,8 @@ select{
   background: var(--md-accent);
   border-radius: 2px;
   z-index: 3;
-  box-shadow: 0 0 8px rgba(255, 91, 46, .6);
+  box-shadow: 0 0 10px rgba(255, 91, 46, .8);
+  pointer-events: none;
 }
 .adj-dial-pointer::before{
   content: "";
@@ -705,7 +711,17 @@ select{
   transform: translateX(-50%);
   border-left: 5px solid transparent;
   border-right: 5px solid transparent;
-  border-top: 6px solid var(--md-accent);
+  border-top: 7px solid var(--md-accent);
+}
+.adj-dial-pointer::after{
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-bottom: 7px solid var(--md-accent);
 }
 .adj-dial-track{
   display: flex;
@@ -717,7 +733,7 @@ select{
   will-change: transform;
 }
 .adj-dial-tick{
-  width: 12px;
+  width: 8px; /* PX_PER_MIN = 8 */
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -726,18 +742,31 @@ select{
 }
 .adj-dial-tick .tick-line{
   width: 1.5px;
-  height: 13px;
+  height: 8px;
   background: #cbd5e1;
   border-radius: 1px;
+}
+.adj-dial-tick.med .tick-line{
+  height: 15px;
+  background: #94a3b8;
+  width: 1.5px;
 }
 .adj-dial-tick.major .tick-line{
   height: 22px;
   background: var(--md-ink);
   width: 2px;
 }
-.adj-dial-tick.med .tick-line{
-  height: 17px;
-  background: #94a3b8;
+.adj-dial-tick .tick-label{
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--md-mute);
+  margin-top: 4px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.adj-dial-tick.major .tick-label{
+  color: var(--md-ink);
+}
 }
 .adj-dial-tick .tick-label{
   font-size: 10px;
@@ -1541,6 +1570,426 @@ html[data-text-size="huge"] .adj-big-val{ font-size: 46px; }
 @keyframes m3FloatIn{
   from{ transform: translate(-50%, -28px); opacity: 0; }
   to{ transform: translate(-50%, 0); opacity: 1; }
+}
+
+/* ========================================================
+   独有自绘控件体系与现代液态动效库 (Material You 3 + Fluid Dynamics)
+   ======================================================== */
+
+/* 1. 主题分段胶囊选择器 (Segmented Tabs) */
+.m3-seg-tabs {
+  position: relative;
+  display: flex;
+  align-items: center;
+  background: var(--md-surface-container-high);
+  border: 1.5px solid var(--md-outline);
+  border-radius: 14px;
+  padding: 3px;
+  gap: 3px;
+  user-select: none;
+}
+.m3-seg-indicator {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 3px;
+  width: calc(33.333% - 2px);
+  background: var(--md-surface);
+  border-radius: 11px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
+  transition: transform 0.28s cubic-bezier(0.34, 1.4, 0.64, 1);
+  pointer-events: none;
+  z-index: 1;
+}
+.m3-seg-tab {
+  position: relative;
+  flex: 1;
+  height: 32px;
+  padding: 0 10px;
+  border: none;
+  background: transparent;
+  color: var(--md-mute);
+  font-size: 13px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 11px;
+  cursor: pointer;
+  z-index: 2;
+  transition: color 0.2s ease;
+  white-space: nowrap;
+}
+.m3-seg-tab.on {
+  color: var(--md-ink);
+  font-weight: 800;
+}
+html[data-theme="dark"] .m3-seg-tabs {
+  background: var(--md-surface-container);
+  border-color: var(--md-outline-variant);
+}
+html[data-theme="dark"] .m3-seg-indicator {
+  background: var(--md-surface-container-highest);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+html[data-theme="dark"] .m3-seg-tab {
+  color: #94a3b8;
+}
+html[data-theme="dark"] .m3-seg-tab.on {
+  color: #f8fafc;
+}
+
+/* 2. 自绘下拉触发胶囊 (替代原生select) */
+.m3-picker-trigger {
+  height: 38px;
+  min-width: 120px;
+  max-width: 220px;
+  border-radius: 12px;
+  border: 1.5px solid var(--md-outline);
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: var(--md-surface-container-high);
+  color: var(--md-ink);
+  font-size: 13.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.15s ease, border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+}
+.m3-picker-trigger:active {
+  transform: scale(0.97);
+  background: var(--md-surface-container-highest);
+}
+.m3-picker-trigger:focus-visible {
+  border-color: var(--md-accent);
+  box-shadow: 0 0 0 3px rgba(255, 91, 46, 0.2);
+}
+.m3-picker-trigger .m3-trigger-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  text-align: left;
+}
+.m3-picker-trigger .m3-trigger-arrow {
+  flex-shrink: 0;
+  color: var(--md-mute);
+  transition: transform 0.2s ease;
+}
+html[data-theme="dark"] .m3-picker-trigger {
+  background: var(--md-surface-container-high);
+  border-color: var(--md-outline);
+  color: #f8fafc;
+}
+
+/* 3. 自绘下拉抽屉面板 (Custom Bottom Sheet Picker) */
+.custom-picker-sheet {
+  max-height: 75vh;
+}
+.custom-picker-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 6px 0 12px;
+}
+.custom-picker-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: var(--md-surface-container-high);
+  border: 1.5px solid transparent;
+  color: var(--md-ink);
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.2s ease, border-color 0.2s ease;
+  text-align: left;
+}
+.custom-picker-item:active {
+  transform: scale(0.98);
+}
+.custom-picker-item.on {
+  background: rgba(255, 91, 46, 0.08);
+  border-color: var(--md-accent);
+  color: var(--md-accent);
+}
+.custom-picker-item-label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.custom-picker-item-desc {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--md-mute);
+}
+.custom-picker-item.on .custom-picker-item-desc {
+  color: rgba(255, 91, 46, 0.8);
+}
+.custom-picker-check {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid var(--md-outline);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+.custom-picker-item.on .custom-picker-check {
+  border-color: var(--md-accent);
+  background: var(--md-accent);
+  color: #ffffff;
+}
+html[data-theme="dark"] .custom-picker-item {
+  background: var(--md-surface-container-high);
+  color: #f8fafc;
+}
+html[data-theme="dark"] .custom-picker-item.on {
+  background: rgba(255, 91, 46, 0.15);
+}
+
+/* 4. 自绘时间双滚轮选择器 (Custom Time Picker Sheet) */
+.custom-time-sheet {
+  max-height: 85vh;
+}
+.ctp-display-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 16px;
+}
+.ctp-time-display {
+  display: inline-flex;
+  align-items: center;
+  font-size: 44px;
+  font-weight: 900;
+  color: var(--md-ink);
+  letter-spacing: 1px;
+  font-variant-numeric: tabular-nums;
+  padding: 4px 18px;
+  border-radius: 16px;
+  background: var(--md-surface-container-high);
+  border: 1.5px solid var(--md-outline-variant);
+  box-shadow: inset 0 2px 6px rgba(0,0,0,.03);
+}
+.ctp-colon {
+  margin: 0 4px;
+  color: var(--md-accent);
+  animation: colonBlink 1.5s infinite ease-in-out;
+}
+@keyframes colonBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+.ctp-presets {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 12px;
+  width: 100%;
+}
+.ctp-preset-chip {
+  padding: 6px 12px;
+  border-radius: 12px;
+  background: var(--md-surface-container-high);
+  border: 1.5px solid var(--md-outline-variant);
+  color: var(--md-ink);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.16s ease;
+}
+.ctp-preset-chip:active {
+  transform: scale(0.95);
+  background: var(--md-accent);
+  color: #ffffff;
+}
+.ctp-wheels-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin: 8px 0 16px;
+}
+.ctp-wheel-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.ctp-col-label {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--md-mute);
+  margin-bottom: 8px;
+}
+.ctp-wheel-viewport {
+  position: relative;
+  width: 100%;
+  height: 190px;
+  overflow-y: scroll;
+  scroll-snap-type: y mandatory;
+  -webkit-overflow-scrolling: touch;
+  border-radius: 18px;
+  background: var(--md-surface-container-high);
+  border: 1.5px solid var(--md-outline-variant);
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  mask-image: linear-gradient(to bottom, transparent, #000 25%, #000 75%, transparent);
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 25%, #000 75%, transparent);
+}
+.ctp-wheel-viewport::-webkit-scrollbar {
+  display: none;
+}
+.ctp-wheel-track {
+  padding: 76px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.ctp-wheel-item {
+  height: 38px;
+  line-height: 38px;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--md-mute);
+  scroll-snap-align: center;
+  transition: transform 0.15s ease, color 0.15s ease, font-size 0.15s ease;
+  user-select: none;
+  cursor: pointer;
+}
+.ctp-wheel-item.on {
+  font-size: 26px;
+  font-weight: 900;
+  color: var(--md-ink);
+  transform: scale(1.15);
+}
+.ctp-wheel-highlight {
+  position: absolute;
+  top: 76px;
+  left: 8px;
+  right: 8px;
+  height: 38px;
+  border-radius: 12px;
+  border-top: 1.5px solid var(--md-accent);
+  border-bottom: 1.5px solid var(--md-accent);
+  background: rgba(255, 91, 46, 0.06);
+  pointer-events: none;
+}
+.ctp-actions {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+}
+.ctp-actions button {
+  flex: 1;
+}
+
+/* 5. 全局通用自绘确认模态弹窗 (Custom Confirm Modal) */
+.custom-confirm-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 108;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  pointer-events: none;
+}
+.custom-confirm-modal[hidden] {
+  display: none !important;
+}
+.ccm-card {
+  pointer-events: auto;
+  position: relative;
+  background: var(--md-surface);
+  border: 1.5px solid var(--md-outline);
+  border-radius: 28px;
+  width: 100%;
+  max-width: 380px;
+  padding: 24px 20px 20px;
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.18), 0 2px 10px rgba(15, 23, 42, 0.08);
+  animation: m3ModalSpringIn 0.32s cubic-bezier(0.34, 1.4, 0.64, 1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+.custom-confirm-modal.closing .ccm-card {
+  animation: m3ModalSpringOut 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.ccm-icon-wrap {
+  width: 52px;
+  height: 52px;
+  border-radius: 26px;
+  background: rgba(255, 91, 46, 0.1);
+  color: var(--md-accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 14px;
+}
+.ccm-icon-wrap.danger {
+  background: rgba(239, 68, 68, 0.12);
+  color: #ef4444;
+}
+.ccm-title {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--md-ink);
+  margin-bottom: 8px;
+}
+.ccm-message {
+  font-size: 14px;
+  color: var(--md-mute);
+  line-height: 1.55;
+  margin-bottom: 22px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.ccm-actions {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+}
+.ccm-btn {
+  flex: 1;
+  height: 48px;
+  border-radius: 14px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.18s ease;
+}
+.ccm-btn:active {
+  transform: scale(0.97);
+}
+.ccm-btn.solid.danger {
+  background: #ef4444;
+  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.3);
+}
+
+/* 6. 现代液态动效库规范 (Fluid & Spring Motion) */
+@keyframes m3ModalSpringIn {
+  0% { transform: scale(0.88) translateY(16px); opacity: 0; }
+  100% { transform: scale(1) translateY(0); opacity: 1; }
+}
+@keyframes m3ModalSpringOut {
+  0% { transform: scale(1) translateY(0); opacity: 1; }
+  100% { transform: scale(0.92) translateY(12px); opacity: 0; }
+}
+@keyframes numPulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.06); color: var(--md-accent); }
+  100% { transform: scale(1); }
+}
+.num-ticker-update {
+  animation: numPulse 0.22s cubic-bezier(0.34, 1.4, 0.64, 1);
 }
 
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
