@@ -6,12 +6,12 @@ import { jsonResponse } from './api/_shared';
 export async function onRequestGet(): Promise<Response> {
   return jsonResponse({
     name: 'daka-worklog',
-    version: '1.0.1',
-    buildTime: '2026-10-09 19:00:00',
+    version: '1.0.2',
+    buildTime: '2026-10-09 19:40:00',
     title: '工时打卡系统',
-    releaseNotes: '1. 修复当天打卡后长按仍可重复打卡问题，完善打卡态保护\n2. 彻底解决手写识别 [object Object] 报错，优化离线单字符识别通道\n3. 修正午休 11:30~13:00 估算错误，实现休息时长与时间段严格双向联动\n4. 增加手写分格与数字键盘输入时间范围约束（小时00~23，分钟00~59）\n5. 新增打卡记录修改与删除抽屉（支持列表点击编辑/删除与向导内快捷删除）\n6. 优化统计页面：删除超出标准，横向排列为三列并由两条垂直分割线分割\n7. 底部导航栏文字增大至 17px，更加醒目易读\n8. 工时微调支持像定时器一样的左右滑动刻度盘手感调节\n9. 统一黑白橙核心主题色，移除杂色并优化空间呼吸感\n10. 修复手机端云端更新检测逻辑，支持原生 APK 远程检测与一键下载更新',
-    downloadUrl: 'https://daka-f3o.pages.dev/release/daka-1.0.1-android.apk',
-    apkUrl: 'https://daka-f3o.pages.dev/release/daka-1.0.1-android.apk',
+    releaseNotes: '1. 彻底告别安卓原生丑陋控件：全面重塑应用独有自绘组件体系（极简分段胶囊主题切换、自绘M3磨砂下拉抽屉面板、自绘双滚轮时间选择抽屉、自绘优雅操作确认弹窗）\n2. 重构真实物理微调标尺：实现毫秒级100%跟手位移与真实时间刻度联动，支持逐1分钟细腻精准步进与弹性磁吸停靠\n3. 全面升级现代液态流体动效体系（Spring & Fluid）：界面/弹窗/抽屉物理弹性升降，大数字数值变动微脉冲动效，全面提升流畅质感',
+    downloadUrl: 'https://daka-f3o.pages.dev/release/daka-1.0.2-android.apk',
+    apkUrl: 'https://daka-f3o.pages.dev/release/daka-1.0.2-android.apk',
     platform: 'Cloudflare Pages & Functions',
     status: 'ok'
   });
