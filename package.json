@@ -7,7 +7,7 @@
     "dev": "http-server -p 5173 -c-1 .",
     "check:emoji": "node verify_zero_emoji.js",
     "test": "node verify_export_and_salary.js",
-    "deploy": "wrangler pages deploy . --project-name daka-worklog"
+    "deploy": "wrangler pages deploy . --project-name daka"
   },
   "devDependencies": {
     "http-server": "^14.1.1",

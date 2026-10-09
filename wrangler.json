@@ -1,16 +1,9 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "daka-worklog",
+  "name": "daka",
   "compatibility_date": "2026-10-01",
   "compatibility_flags": [
     "nodejs_compat"
   ],
-  "pages_build_output_dir": ".",
-  "d1_databases": [
-    {
-      "binding": "DB",
-      "database_name": "daka-worklog-db",
-      "database_id": "daka-worklog-d1-placeholder"
-    }
-  ]
+  "pages_build_output_dir": "."
 }
