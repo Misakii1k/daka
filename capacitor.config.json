@@ -1,0 +1,8 @@
+{
+  "appId": "com.daka.app",
+  "appName": "工时打卡",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https"
+  }
+}
