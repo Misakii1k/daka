@@ -430,10 +430,11 @@
 
   // 单字符分类决策函数
   function classifySingleCharacter(target) {
+    if (!target) return { char: '0', score: 0.1 };
     if (target.kind === 'colon' || target.type === 'colon') return { char: ':', score: 0.99 };
     if (target.kind === 'dot' || target.type === 'dot') return { char: '.', score: 0.95 };
 
-    const strokes = target.strokes || (target.pixels ? [target.pixels] : null);
+    const strokes = Array.isArray(target) ? target : (target.strokes || (target.pixels ? [target.pixels] : null));
     if (!strokes || strokes.length === 0) return { char: '0', score: 0.1 };
 
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
@@ -1073,8 +1074,13 @@
     if (box.w < 3 && box.h < 3) {
       return { char: '', score: 0, topScores: [] };
     }
-    const mnistMat = normalizeToMNIST(strokes, box);
-    return classifySingleCharacter(strokes, mnistMat, box);
+    if (typeof window !== 'undefined' && window.NNEngine && window.NNEngine.isReady) {
+      const input784 = window.NNEngine.preprocessStrokes(strokes, box);
+      const pred = window.NNEngine.predict(input784);
+      return { char: String(pred.digit), score: pred.confidence, topScores: pred.probs };
+    }
+    const target = { type: 'digit', strokes, box };
+    return classifySingleCharacter(target);
   }
 
   // ---------- 6. 交互手写画板（支持可调提笔防抖与 flush 立即冲刷） ----------

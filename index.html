@@ -92,7 +92,7 @@
       <button class="arrow" id="s-next" type="button" aria-label="下个月">›</button>
     </div>
     <div class="big num" id="s-total">0<small>小时</small></div>
-    <div class="grid2 num" id="s-grid"></div>
+    <div class="grid-stats-3 num" id="s-grid"></div>
     <div class="miss-list" id="s-miss"></div>
 
     <!-- 薪资核算卡片 -->
@@ -349,9 +349,11 @@
   <div class="sheet-title" id="e-title"></div>
   <label class="row">上班<input id="e-in" type="time"></label>
   <label class="row">下班<input id="e-out" type="time"></label>
+  <label class="row">午休扣除<div class="sheet-inline-val"><input id="e-lunch" type="number" min="0" max="240" step="5" placeholder="60"><span>分钟</span></div></label>
   <label class="row">备注<input id="e-note" type="text" maxlength="40" placeholder="可不填"></label>
   <div class="sheet-act">
     <button class="ghost danger" id="e-del" type="button">删除这天</button>
+    <button class="ghost" id="e-wiz" type="button">手写向导</button>
     <button class="ghost" id="e-cancel" type="button">取消</button>
     <button class="solid" type="submit">保存</button>
   </div>
@@ -361,6 +363,7 @@
 <div class="wizard-modal" id="wizard-modal" hidden>
   <div class="wiz-header">
     <button class="wiz-close" id="wiz-close" type="button" aria-label="关闭">&times;</button>
+    <button class="wiz-del-shortcut danger" id="wiz-del-btn" type="button" hidden>删除此记录</button>
 
     <div class="wiz-title-wrap">
       <div class="wiz-step-pill" id="wiz-step-pill">第 1 步 / 共 3 步</div>
@@ -541,6 +544,18 @@
 
     <!-- 聚焦调节区：单次仅展示当前选中项 -->
     <div class="adj-focus-card">
+      <!-- 定时器左右滑动手感刻度盘 -->
+      <div class="adj-dial-container" id="adj-dial-container">
+        <div class="adj-dial-header">
+          <span id="adj-dial-title">左右滑动定时器调节</span>
+          <span class="dial-hint">左右滑拨 · 每次 5 分钟</span>
+        </div>
+        <div class="adj-dial-viewport" id="adj-dial-viewport">
+          <div class="adj-dial-pointer"></div>
+          <div class="adj-dial-track" id="adj-dial-track"></div>
+        </div>
+      </div>
+
       <!-- 上班面板 -->
       <div class="adj-panel on" id="adj-panel-in">
         <div class="adj-panel-head">上班时间</div>

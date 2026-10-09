@@ -1,11 +1,11 @@
 *[hidden],[hidden]{display:none!important}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{
-  /* Material Design 3 配色系统令牌 */
-  --md-primary:#1d4ed8;
+  /* Material Design 3 配色系统令牌 (纯净黑、白、活力暖橙经典主题体系) */
+  --md-primary:#18181b;
   --md-on-primary:#ffffff;
-  --md-primary-container:#dbeafe;
-  --md-on-primary-container:#1e3a8a;
+  --md-primary-container:#ffedd5;
+  --md-on-primary-container:#9a3412;
   --md-surface:#f8fafc;
   --md-surface-container:#ffffff;
   --md-surface-container-high:#f1f5f9;
@@ -17,7 +17,7 @@
   --md-accent:#ff5b2e;
   --md-success:#15803d;
   --md-success-container:#dcfce7;
-  --md-warning:#b45309;
+  --md-warning:#ea580c;
 
   /* Material Design 3 动效物理令牌 (灵动弹性与流体阻尼) */
   --m3-easing-emphasized:cubic-bezier(0.2, 0.0, 0.0, 1.0);
@@ -173,6 +173,46 @@ button:active{transform:scale(.96)}
 
 /* 统计 */
 #s-total{text-align:center;margin-top:14px}
+/* 统计 - 横向三列，两根分割线分割开 */
+.grid-stats-3{
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  margin-top: 24px;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  padding: 16px 0;
+}
+.grid-stats-3 .stat-col{
+  text-align: center;
+  font-size: 13px;
+  color: var(--md-mute);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+.grid-stats-3 .stat-col:not(:last-child)::after{
+  content: "";
+  position: absolute;
+  right: 0;
+  top: 12%;
+  height: 76%;
+  width: 1px;
+  background: var(--line);
+}
+.grid-stats-3 .stat-col b{
+  display: block;
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--ink);
+  margin-top: 4px;
+  letter-spacing: -0.5px;
+}
+.grid-stats-3 .stat-col b.warn{
+  color: var(--accent);
+}
+
 .grid2{display:grid;grid-template-columns:1fr 1fr;margin-top:24px;border-top:1px solid var(--line)}
 .grid2 div{padding:16px 0;border-bottom:1px solid var(--line);font-size:12px;color:#888}
 .grid2 div:nth-child(odd){border-right:1px solid var(--line)}
@@ -196,8 +236,8 @@ input[type=number], input[type=text], input[type=time], select{
   transition: border-color var(--m3-dur-short) ease, box-shadow var(--m3-dur-short) ease;
 }
 input[type=number]:focus, input[type=text]:focus, input[type=time]:focus, select:focus{
-  border-color: #2563eb;
-  box-shadow: 0 0 0 3px rgba(37,99,235,.18);
+  border-color: var(--md-accent);
+  box-shadow: 0 0 0 3px rgba(255,91,46,.18);
 }
 select{
   padding-right: 28px;
@@ -278,7 +318,7 @@ select{
 }
 .tabs button{
   flex: 1;
-  font-size: 13.5px;
+  font-size: 17px;
   color: var(--md-mute);
   font-weight: 600;
   position: relative;
@@ -287,6 +327,7 @@ select{
   align-items: center;
   justify-content: center;
   gap: 4px;
+  letter-spacing: 0.5px;
   transition: all var(--m3-dur-short) ease;
 }
 .tabs button.on{
@@ -296,10 +337,10 @@ select{
 .tabs button.on::after{
   content: "";
   position: absolute;
-  top: 10px;
-  width: 28px;
-  height: 4px;
-  border-radius: 2px;
+  top: 8px;
+  width: 32px;
+  height: 4.5px;
+  border-radius: 3px;
   background: var(--md-accent);
 }
 
@@ -428,7 +469,7 @@ select{
 }
 .black-hero-btn.charging{
   transform: scale(.98);
-  box-shadow: 0 0 20px rgba(37,99,235,.35);
+  box-shadow: 0 0 22px rgba(255,91,46,.45);
   transition: transform var(--m3-dur-short) var(--m3-easing-emphasized);
 }
 .black-hero-btn.punched{
@@ -446,7 +487,7 @@ select{
   100%{transform:scale(1)}
 }
 
-/* 内嵌充能轨道与光轨流光 */
+/* 内嵌充能轨道与光轨流光 (纯净高燃活力暖橙) */
 .hero-charge-track{
   position: absolute;
   inset: 0;
@@ -461,7 +502,7 @@ select{
   top: 0;
   bottom: 0;
   width: 0%;
-  background: linear-gradient(90deg, #1d4ed8 0%, #7c3aed 45%, #ea580c 80%, #ff5b2e 100%);
+  background: linear-gradient(90deg, #ea580c 0%, #ff5b2e 100%);
   pointer-events: none;
 }
 .hero-charge-glow{
@@ -506,8 +547,8 @@ select{
 }
 .hero-charge-pct{
   font-size: 11px;
-  font-weight: 700;
-  color: #93c5fd;
+  font-weight: 800;
+  color: #ff7a45;
 }
 .hero-btn-title{
   font-size: 20px;
@@ -588,6 +629,127 @@ select{
 .adj-summary-bar strong{font-size:16px;color:var(--md-ink)}
 .adj-summary-bar span:last-child span{font-weight:800;color:#b91c1c;font-size:16px}
 
+/* 定时器滚轮刻度盘 (左右滑动高精度微调) */
+.adj-dial-container{
+  width: 100%;
+  margin: 4px 0 14px;
+  position: relative;
+  background: var(--md-surface-container-high);
+  border-radius: 16px;
+  padding: 8px 12px 6px;
+  border: 1px solid var(--md-outline-variant);
+  user-select: none;
+  touch-action: none;
+}
+.adj-dial-header{
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11.5px;
+  color: var(--md-mute);
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.adj-dial-header .dial-hint{
+  color: var(--md-accent);
+  font-weight: 700;
+}
+.adj-dial-viewport{
+  position: relative;
+  width: 100%;
+  height: 52px;
+  overflow: hidden;
+  cursor: grab;
+  mask-image: linear-gradient(to right, transparent, #000 15%, #000 85%, transparent);
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 15%, #000 85%, transparent);
+}
+.adj-dial-viewport:active{
+  cursor: grabbing;
+}
+.adj-dial-pointer{
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 2.5px;
+  transform: translateX(-50%);
+  background: var(--md-accent);
+  border-radius: 2px;
+  z-index: 3;
+  box-shadow: 0 0 8px rgba(255, 91, 46, .6);
+}
+.adj-dial-pointer::before{
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 6px solid var(--md-accent);
+}
+.adj-dial-track{
+  display: flex;
+  height: 100%;
+  align-items: flex-start;
+  position: absolute;
+  left: 50%;
+  transform: translateX(0px);
+  will-change: transform;
+}
+.adj-dial-tick{
+  width: 12px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+}
+.adj-dial-tick .tick-line{
+  width: 1.5px;
+  height: 13px;
+  background: #cbd5e1;
+  border-radius: 1px;
+}
+.adj-dial-tick.major .tick-line{
+  height: 22px;
+  background: var(--md-ink);
+  width: 2px;
+}
+.adj-dial-tick.med .tick-line{
+  height: 17px;
+  background: #94a3b8;
+}
+.adj-dial-tick .tick-label{
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--md-mute);
+  margin-top: 3px;
+  font-variant-numeric: tabular-nums;
+}
+
+.sheet-inline-val{display:flex;align-items:center;gap:6px;font-size:14px;color:var(--mute)}
+.sheet-inline-val input{width:76px;text-align:right}
+.wiz-del-shortcut{
+  position: absolute;
+  right: 52px;
+  top: 4px;
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 17px;
+  font-size: 13px;
+  font-weight: 700;
+  border: 1px solid rgba(239, 68, 68, .3);
+  background: rgba(239, 68, 68, .08);
+  color: #ef4444;
+  cursor: pointer;
+  transition: all .15s ease;
+}
+.wiz-del-shortcut:active{
+  transform: scale(.95);
+  background: rgba(239, 68, 68, .18);
+}
+
 .m3-sheet-footer{margin-top:14px}
 
 /* 长辈手写向导弹窗（沉浸式全屏，专注、零干扰） */
@@ -613,7 +775,7 @@ select{
 /* 适老分格引导容器 */
 .wiz-grid-container{display:flex;align-items:center;justify-content:center;gap:10px;margin:2px 0 6px}
 .wiz-grid-cell{width:64px;height:78px;border:2px solid #e2e8f0;border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#fff;cursor:pointer;transition:all .15s}
-.wiz-grid-cell.active{border-color:#2563eb;background:#eff6ff;box-shadow:0 0 0 3px rgba(37,99,235,.16)}
+.wiz-grid-cell.active{border-color:var(--md-accent);background:rgba(255,91,46,.08);box-shadow:0 0 0 3px rgba(255,91,46,.18)}
 .wiz-grid-cell.filled{border-color:#94a3b8}
 .wiz-grid-digit{font-size:36px;font-weight:800;color:var(--ink);line-height:1}
 .wiz-grid-label{font-size:11px;color:var(--mute);margin-top:3px;font-weight:600}
@@ -626,7 +788,7 @@ select{
 
 /* 手写画板容器 */
 .wiz-pad-container{position:relative;width:100%;height:210px;background:#ffffff;border:2px dashed #cbd5e1;border-radius:16px;overflow:hidden;touch-action:none;transition:border-color .15s}
-.wiz-pad-container.active-focus{border:2px solid #2563eb}
+.wiz-pad-container.active-focus{border:2px solid var(--md-accent)}
 .wiz-canvas{width:100%;height:100%;display:block;cursor:crosshair}
 .wiz-pad-hint{position:absolute;left:0;right:0;bottom:10px;text-align:center;font-size:13px;color:#94a3b8;font-weight:500;pointer-events:none}
 

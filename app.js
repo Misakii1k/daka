@@ -36,8 +36,15 @@
       pass: '',
       filename: 'worklog-backup.json'
     },
-    routineLunch: { start: '11:30', end: '13:00', span: 60 }
+    routineLunch: { start: '12:00', end: '13:00', span: 60 }
   }, load(KEY_SET, {}));
+
+  // 自愈校验：若历史缓存为 11:30~13:00 但 span 误存为 60 分钟，自动校正为真实 90 分钟
+  if (settings.routineLunch) {
+    if (settings.routineLunch.start === '11:30' && settings.routineLunch.end === '13:00' && settings.routineLunch.span === 60) {
+      settings.routineLunch.span = 90;
+    }
+  }
 
   const saveLog = () => localStorage.setItem(KEY_LOG, JSON.stringify(log));
   const saveSet = () => localStorage.setItem(KEY_SET, JSON.stringify(settings));
@@ -347,29 +354,114 @@
   $('m-prev').addEventListener('click', () => { monthCur = new Date(monthCur.getFullYear(), monthCur.getMonth() - 1, 1); renderMonth(); });
   $('m-next').addEventListener('click', () => { monthCur = new Date(monthCur.getFullYear(), monthCur.getMonth() + 1, 1); renderMonth(); });
 
-  // 点击周记录或月记录某行，调起长辈手写向导
-  $('w-rows').addEventListener('click', e => { const b = e.target.closest('[data-k]'); if (b) openWizard(b.dataset.k); });
-  $('m-list').addEventListener('click', e => { const b = e.target.closest('[data-k]'); if (b) openWizard(b.dataset.k); });
+  // ---------- 记录修改与删除抽屉控制器 ----------
+  let editingKey = null;
+
+  function openEditSheet(key) {
+    editingKey = key;
+    const r = log[key] || {};
+    const d = dateOf(key);
+    $('e-title').textContent = `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日 · ${WD[d.getDay()]}`;
+    $('e-in').value = r.in || '';
+    $('e-out').value = r.out || '';
+    $('e-lunch').value = r.lunch != null ? r.lunch : (settings.lunch || 60);
+    $('e-note').value = r.note || '';
+
+    const hasData = !!(r.in || r.out);
+    $('e-del').hidden = !hasData;
+
+    $('mask').hidden = false;
+    $('sheet').hidden = false;
+  }
+
+  function closeEditSheet() {
+    $('mask').hidden = true;
+    $('sheet').hidden = true;
+    editingKey = null;
+  }
+
+  $('sheet').addEventListener('submit', e => {
+    e.preventDefault();
+    if (!editingKey) return;
+    const inVal = $('e-in').value;
+    const outVal = $('e-out').value;
+    const lunchVal = Number($('e-lunch').value) || 0;
+    const noteVal = $('e-note').value.trim();
+
+    if (inVal && !isValidTimeStr(inVal)) {
+      toast('上班时间不合法，小时需00~23，分钟需00~59');
+      return;
+    }
+    if (outVal && !isValidTimeStr(outVal)) {
+      toast('下班时间不合法，小时需00~23，分钟需00~59');
+      return;
+    }
+
+    if (!inVal && !outVal && !noteVal) {
+      delete log[editingKey];
+    } else {
+      const r = log[editingKey] || (log[editingKey] = {});
+      r.in = inVal;
+      r.out = outVal;
+      r.lunch = lunchVal;
+      r.note = noteVal;
+    }
+    saveLog();
+    closeEditSheet();
+    Haptic.success();
+    renderAll();
+    toast('已保存修改');
+    autoSyncByStorageMode();
+  });
+
+  // 删除某天记录
+  $('e-del').addEventListener('click', () => {
+    if (!editingKey) return;
+    if (confirm(`确定要删除 ${editingKey} 的打卡记录吗？`)) {
+      delete log[editingKey];
+      saveLog();
+      closeEditSheet();
+      Haptic.warning();
+      renderAll();
+      toast('已删除该日打卡记录');
+      autoSyncByStorageMode();
+    }
+  });
+
+  $('e-cancel').addEventListener('click', closeEditSheet);
+  $('mask').addEventListener('click', closeEditSheet);
+
+  if ($('e-wiz')) {
+    $('e-wiz').addEventListener('click', () => {
+      const k = editingKey;
+      closeEditSheet();
+      openWizard(k);
+    });
+  }
+
+  // 点击周记录或月记录某行，调起记录修改与删除抽屉
+  $('w-rows').addEventListener('click', e => { const b = e.target.closest('[data-k]'); if (b) openEditSheet(b.dataset.k); });
+  $('m-list').addEventListener('click', e => { const b = e.target.closest('[data-k]'); if (b) openEditSheet(b.dataset.k); });
 
   // ---------- 统计视图渲染 ----------
   let statMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
 
   function renderStats() {
     const keys = monthKeys(statMonth);
-    let total = 0, full = 0, over = 0;
+    let total = 0, full = 0;
     const miss = [];
     keys.forEach(k => {
       const r = log[k], w = worked(r);
-      if (w != null) { total += w; full++; over += Math.max(0, w - settings.std * 60); }
+      if (w != null) { total += w; full++; }
       else if (isMissing(r)) miss.push(k);
     });
     $('s-title').textContent = `${statMonth.getFullYear()}年${statMonth.getMonth() + 1}月`;
     $('s-total').firstChild.nodeValue = fmtH(total);
+    $('s-grid').className = 'grid-stats-3 num';
     $('s-grid').innerHTML =
-      `<div>出勤天数<b>${keys.length}</b></div>` +
-      `<div>日均工时<b>${full ? fmtH(total / full) : '0.0'} h</b></div>` +
-      `<div>超出标准<b>${fmtH(over)} h</b></div>` +
-      `<div>缺卡<b class="${miss.length ? 'warn' : ''}">${miss.length} 天</b></div>`;
+      `<div class="stat-col">出勤天数<b>${keys.length}</b></div>` +
+      `<div class="stat-col">日均工时<b>${full ? fmtH(total / full) : '0.0'} h</b></div>` +
+      `<div class="stat-col">缺卡<b class="${miss.length ? 'warn' : ''}">${miss.length} 天</b></div>`;
     $('s-miss').innerHTML = miss.length
       ? '缺卡：' + miss.map(k => { const d = dateOf(k); return `${d.getMonth() + 1}月${d.getDate()}日`; }).join('、')
       : '';
@@ -1215,11 +1307,56 @@
   let currentGridDigits = ['', '', '', ''];
   let autoAdvanceTimer = null;
   const gridTipTexts = [
-    '请书写：时 十位（例如 0 或 1）',
-    '请书写：时 个位（例如 8 或 9）',
-    '请书写：分 十位（例如 0 到 5）',
-    '请书写：分 个位（例如 0 到 9）'
+    '请书写：时 十位（0、1 或 2）',
+    '请书写：时 个位（0 到 9，20点后为 0 到 3）',
+    '请书写：分 十位（0 到 5，不能达到 60 分）',
+    '请书写：分 个位（0 到 9）'
   ];
+
+  function isValidTimeStr(str) {
+    if (!str || !/^\d{2}:\d{2}$/.test(str)) return false;
+    const [hh, mm] = str.split(':').map(Number);
+    return hh >= 0 && hh <= 23 && mm >= 0 && mm <= 59;
+  }
+
+  // 严格单格时间合法性校验
+  function validateGridDigit(idx, char, currentDigits) {
+    if (!/^\d$/.test(char)) return { valid: false, reason: '请输入 0 到 9 的纯数字' };
+    const num = Number(char);
+    if (idx === 0) {
+      if (num > 2) {
+        return { valid: false, reason: '小时十位只能是 0、1 或 2（一天为 00~23 小时）' };
+      }
+    } else if (idx === 1) {
+      const d0 = currentDigits[0];
+      if (d0 === '2' && num > 3) {
+        return { valid: false, reason: '小时不能超过 23（时十位为2时，个位只能是 0 到 3）' };
+      }
+    } else if (idx === 2) {
+      if (num > 5) {
+        return { valid: false, reason: '分钟十位只能是 0 到 5（一小时最多 59 分钟）' };
+      }
+    } else if (idx === 3) {
+      return { valid: true };
+    }
+    return { valid: true };
+  }
+
+  function trySetGridDigit(idx, char) {
+    const check = validateGridDigit(idx, char, currentGridDigits);
+    if (!check.valid) {
+      Haptic.warning();
+      toast(check.reason);
+      if (padInstance) padInstance.clear();
+      return false;
+    }
+    currentGridDigits[idx] = String(char);
+    if (idx === 0 && char === '2' && Number(currentGridDigits[1]) > 3) {
+      currentGridDigits[1] = '';
+    }
+    updateGridUI();
+    return true;
+  }
 
   function getStrokesBBox(strokes) {
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
@@ -1290,36 +1427,46 @@
       }
       $('wiz-pad-hint').hidden = true;
 
-      let digit = '';
-
+      let rawRes = null;
       // 优先极速通道（毫秒级单字识别）
       if (window.recognizeSingleDigit) {
-        digit = window.recognizeSingleDigit(strokes);
+        rawRes = window.recognizeSingleDigit(strokes);
       } else if (window.NNEngine && window.NNEngine.isReady) {
         const box = getStrokesBBox(strokes);
         const input784 = window.NNEngine.preprocessStrokes(strokes, box);
-        const pred = window.NNEngine.predict(input784);
-        digit = pred.digit;
+        rawRes = window.NNEngine.predict(input784);
       } else if (window.recognizeStrokes) {
-        const res = window.recognizeStrokes(strokes, { step: wizStep === 2 ? 'out' : 'in' });
-        digit = (res.primaryTime || '').replace(/\D/g, '').slice(-1) || '';
+        rawRes = window.recognizeStrokes(strokes, { step: wizStep === 2 ? 'out' : 'in' });
       }
 
-      if (digit !== '') {
-        currentGridDigits[currentGridIdx] = digit;
-        updateGridUI();
+      // 严格解包：彻底消灭 [object Object] 报错
+      let digit = '';
+      if (rawRes) {
+        if (typeof rawRes === 'string') {
+          digit = rawRes;
+        } else if (typeof rawRes === 'object') {
+          digit = rawRes.char || rawRes.digit || (rawRes.primaryTime ? rawRes.primaryTime.replace(/\D/g, '').slice(-1) : '');
+        }
+      }
+      digit = String(digit || '').trim();
+      const match = digit.match(/\d/);
+      digit = match ? match[0] : '';
 
-        clearTimeout(autoAdvanceTimer);
-        const advanceMs = settings.hwSpeed === 'instant' ? 180 : (settings.hwSpeed === 'relaxed' ? 380 : 260);
-        autoAdvanceTimer = setTimeout(() => {
-          if (currentGridIdx < 3) {
-            currentGridIdx++;
-            updateGridUI();
-            if (padInstance) padInstance.clear();
-            const hint = $('wiz-pad-hint');
-            if (hint) hint.hidden = false;
-          }
-        }, advanceMs);
+      if (digit !== '') {
+        const ok = trySetGridDigit(currentGridIdx, digit);
+        if (ok) {
+          clearTimeout(autoAdvanceTimer);
+          const advanceMs = settings.hwSpeed === 'instant' ? 180 : (settings.hwSpeed === 'relaxed' ? 380 : 260);
+          autoAdvanceTimer = setTimeout(() => {
+            if (currentGridIdx < 3) {
+              currentGridIdx++;
+              updateGridUI();
+              if (padInstance) padInstance.clear();
+              const hint = $('wiz-pad-hint');
+              if (hint) hint.hidden = false;
+            }
+          }, advanceMs);
+        }
       }
     }, { debounceMs: curSpeedMs });
 
@@ -1411,7 +1558,7 @@
     $('wiz-toggle-keypad').textContent = isKeypadMode ? '手写输入' : '切换键盘';
   });
 
-  // 备用数字键盘输入
+  // 备用数字键盘输入 (带单格合法性拦截)
   $('wiz-keypad').addEventListener('click', e => {
     const b = e.target.closest('button[data-key]');
     if (!b) return;
@@ -1428,22 +1575,65 @@
       if (currentGridIdx < 2) currentGridIdx = 2;
       updateGridUI();
     } else if (/^\d$/.test(k)) {
-      currentGridDigits[currentGridIdx] = k;
-      updateGridUI();
-      if (currentGridIdx < 3) {
+      const ok = trySetGridDigit(currentGridIdx, k);
+      if (ok && currentGridIdx < 3) {
         currentGridIdx++;
         updateGridUI();
       }
     }
   });
 
-  // 休息时长预设选择
+  // 通用时间跨度计算函数 (跨天自适应，以分钟为单位)
+  function calcMinutesBetween(startStr, endStr) {
+    if (!startStr || !endStr) return 0;
+    let s = toMin(startStr);
+    let e = toMin(endStr);
+    let diff = e - s;
+    if (diff < 0) diff += 1440;
+    return diff;
+  }
+
+  // 休息时长预设选择 (双向联动具体时间段)
   $('wiz-rest-presets').addEventListener('click', e => {
     const b = e.target.closest('.preset-btn');
     if (!b) return;
+    const targetMin = Number(b.dataset.min);
+    wizData.lunchSpan = targetMin;
     document.querySelectorAll('#wiz-rest-presets .preset-btn').forEach(x => x.classList.toggle('on', x === b));
-    wizData.lunchSpan = Number(b.dataset.min);
+
+    let curStart = $('wiz-rest-start').value || '12:00';
+    if (targetMin === 0) {
+      $('wiz-rest-end').value = curStart;
+      wizData.lunchStart = curStart;
+      wizData.lunchEnd = curStart;
+    } else {
+      let endM = toMin(curStart) + targetMin;
+      if (endM >= 1440) endM %= 1440;
+      const endStr = `${pad(Math.floor(endM / 60))}:${pad(endM % 60)}`;
+      $('wiz-rest-end').value = endStr;
+      wizData.lunchStart = curStart;
+      wizData.lunchEnd = endStr;
+    }
   });
+
+  function onWizRestTimeInputsChange() {
+    const s = $('wiz-rest-start').value;
+    const e = $('wiz-rest-end').value;
+    if (s && e) {
+      const span = calcMinutesBetween(s, e);
+      wizData.lunchSpan = span;
+      wizData.lunchStart = s;
+      wizData.lunchEnd = e;
+      document.querySelectorAll('#wiz-rest-presets .preset-btn').forEach(btn => {
+        btn.classList.toggle('on', Number(btn.dataset.min) === span);
+      });
+    }
+  }
+
+  $('wiz-rest-start').addEventListener('change', onWizRestTimeInputsChange);
+  $('wiz-rest-end').addEventListener('change', onWizRestTimeInputsChange);
+  $('wiz-rest-start').addEventListener('input', onWizRestTimeInputsChange);
+  $('wiz-rest-end').addEventListener('input', onWizRestTimeInputsChange);
 
   function openWizard(key, startStep = 1) {
     wizKey = key || activeKey();
@@ -1451,13 +1641,18 @@
     wizData.in = r.in || '';
     wizData.out = r.out || '';
     wizData.lunchSpan = (r.lunch != null ? r.lunch : settings.lunch || 60);
-    wizData.lunchStart = r.lunchStart || (settings.routineLunch ? settings.routineLunch.start : '11:30');
+    wizData.lunchStart = r.lunchStart || (settings.routineLunch ? settings.routineLunch.start : '12:00');
     wizData.lunchEnd = r.lunchEnd || (settings.routineLunch ? settings.routineLunch.end : '13:00');
+
+    // 若当前编辑的这天已有记录，展示顶部红色删除按钮
+    const delBtn = $('wiz-del-btn');
+    if (delBtn) {
+      delBtn.hidden = !(r.in || r.out);
+    }
 
     $('wizard-modal').hidden = false;
     initPad();
 
-    // 延迟 50ms 保证全屏布局后精确重绘
     setTimeout(() => {
       if (padInstance) padInstance.resize();
       gotoStep(startStep);
@@ -1470,13 +1665,29 @@
     wizKey = null;
   }
 
+  // 向导内快捷删除已有记录
+  const wizDelBtn = $('wiz-del-btn');
+  if (wizDelBtn) {
+    wizDelBtn.addEventListener('click', () => {
+      if (!wizKey) return;
+      if (confirm(`确定要删除 ${wizKey} 的打卡记录吗？`)) {
+        delete log[wizKey];
+        saveLog();
+        closeWizard();
+        Haptic.warning();
+        renderAll();
+        toast('已删除该日记录');
+        autoSyncByStorageMode();
+      }
+    });
+  }
+
   function gotoStep(step) {
     clearTimeout(autoAdvanceTimer);
     wizStep = step;
     const d = dateOf(wizKey);
     $('wiz-target-date').textContent = `${d.getMonth() + 1}月${d.getDate()}日 ${WD[d.getDay()]}`;
 
-    // 重置手写板与键盘状态
     isKeypadMode = false;
     $('wiz-keypad').hidden = true;
     $('wiz-pad-container').style.display = '';
@@ -1509,16 +1720,22 @@
       $('wiz-prev-btn').hidden = false;
       $('wiz-next-btn').textContent = '完成记录';
 
-      // 智能常用午休卡片
+      // 智能常用午休卡片：动态基于时间段计算实际扣除小时数，杜绝计算误差
       const routine = settings.routineLunch;
-      if (routine && routine.span) {
+      if (routine && (routine.span || (routine.start && routine.end))) {
         $('wiz-routine-card').hidden = false;
-        const hStr = (routine.span / 60).toFixed(1);
-        $('rc-time-txt').textContent = `${routine.start || '11:30'} – ${routine.end || '13:00'}（扣除 ${hStr} 小时）`;
+        const rStart = routine.start || '12:00';
+        const rEnd = routine.end || '13:00';
+        const realSpan = calcMinutesBetween(rStart, rEnd);
+        const displaySpan = realSpan > 0 ? realSpan : (routine.span || 60);
+        const hStr = fmtH(displaySpan);
+        $('rc-time-txt').textContent = `${rStart} – ${rEnd}（扣除 ${hStr} 小时）`;
         $('rc-use-btn').onclick = () => {
-          wizData.lunchSpan = routine.span;
-          wizData.lunchStart = routine.start;
-          wizData.lunchEnd = routine.end;
+          wizData.lunchSpan = displaySpan;
+          wizData.lunchStart = rStart;
+          wizData.lunchEnd = rEnd;
+          $('wiz-rest-start').value = rStart;
+          $('wiz-rest-end').value = rEnd;
           saveAndFinishWizard();
         };
       } else {
@@ -1530,7 +1747,7 @@
         btn.classList.toggle('on', Number(btn.dataset.min) === wizData.lunchSpan);
       });
 
-      $('wiz-rest-start').value = wizData.lunchStart || '11:30';
+      $('wiz-rest-start').value = wizData.lunchStart || '12:00';
       $('wiz-rest-end').value = wizData.lunchEnd || '13:00';
     }
   }
@@ -1541,13 +1758,22 @@
       gotoStep(1);
       return;
     }
+    if (!isValidTimeStr(wizData.in)) {
+      toast('上班时间不合法，小时需00~23，分钟需00~59');
+      gotoStep(1);
+      return;
+    }
     if (!wizData.out) {
       toast('请先输入下班时间');
       gotoStep(2);
       return;
     }
+    if (!isValidTimeStr(wizData.out)) {
+      toast('下班时间不合法，小时需00~23，分钟需00~59');
+      gotoStep(2);
+      return;
+    }
 
-    // 保存到 log
     const r = log[wizKey] || (log[wizKey] = {});
     r.in = wizData.in;
     r.out = wizData.out;
@@ -1572,7 +1798,7 @@
     autoSyncByStorageMode();
   }
 
-  // 向导下一步与上一步
+  // 向导下一步与上一步 (带格式与范围校验)
   $('wiz-next-btn').addEventListener('click', () => {
     if (padInstance && padInstance.flush) padInstance.flush();
     clearTimeout(autoAdvanceTimer);
@@ -1582,11 +1808,19 @@
         toast('请先将上方 4 个格子书写完整');
         return;
       }
+      if (!isValidTimeStr(v)) {
+        toast('上班时间不合法：小时需在 00~23 之间，分钟需在 00~59 之间');
+        return;
+      }
       gotoStep(2);
     } else if (wizStep === 2) {
       const v = getStepTime();
       if (!v || v === '--:--' || v.length < 5) {
         toast('请先将上方 4 个格子书写完整');
+        return;
+      }
+      if (!isValidTimeStr(v)) {
+        toast('下班时间不合法：小时需在 00~23 之间，分钟需在 00~59 之间');
         return;
       }
       gotoStep(3);
@@ -1618,6 +1852,17 @@
   function startPunchProgress(e) {
     if (e.button !== undefined && e.button !== 0) return;
     if (hasTriggeredPunch) return;
+
+    // 当天已完成打卡，严格拦截长按重复打卡
+    const k = activeKey();
+    const r = log[k] || {};
+    const hasRecorded = !!(r.in && r.out);
+    if (hasRecorded) {
+      Haptic.warning();
+      toast('今日已完成打卡，如需调整工时请点击下方“微调今日工时”');
+      return;
+    }
+
     isPressingPunch = true;
     pressStartTime = performance.now();
     if (quickPunchBtn) quickPunchBtn.classList.add('charging');
@@ -1629,28 +1874,22 @@
       const progress = Math.min(1.0, elapsed / LONG_PRESS_DURATION);
       const pct = Math.round(progress * 100);
 
-      // 色彩从科技蓝 (37, 99, 235) 随着长按平滑演进为活力暖橙 (255, 91, 46)
-      const r = Math.round(37 + (255 - 37) * progress);
-      const g = Math.round(99 + (91 - 99) * progress);
-      const b = Math.round(235 + (46 - 235) * progress);
-      const currentRgb = `${r}, ${g}, ${b}`;
-
       if (chargeFill) {
         chargeFill.style.width = `${progress * 100}%`;
-        chargeFill.style.background = `linear-gradient(90deg, #1d4ed8 0%, rgba(${currentRgb}, 0.95) 100%)`;
+        chargeFill.style.background = 'linear-gradient(90deg, #ea580c 0%, #ff5b2e 100%)';
       }
       if (chargeGlow) {
         chargeGlow.style.opacity = progress > 0 ? '1' : '0';
         chargeGlow.style.left = `calc(${progress * 100}% - 8px)`;
-        chargeGlow.style.boxShadow = `0 0 14px rgba(${currentRgb}, 0.85)`;
+        chargeGlow.style.boxShadow = '0 0 16px rgba(255, 91, 46, 0.85)';
       }
       if (quickPunchBtn) {
-        quickPunchBtn.style.boxShadow = `0 0 ${16 + progress * 10}px rgba(${currentRgb}, ${0.35 + progress * 0.15})`;
+        quickPunchBtn.style.boxShadow = `0 0 ${16 + progress * 10}px rgba(255, 91, 46, ${0.35 + progress * 0.15})`;
       }
       if (chargePct) {
         chargePct.hidden = false;
         chargePct.textContent = `${pct}%`;
-        chargePct.style.color = `rgb(${r}, ${g}, ${b})`;
+        chargePct.style.color = '#ff5b2e';
       }
       const titleTxt = $('m3-btn-title');
       if (titleTxt) {
@@ -1763,14 +2002,115 @@
     quickPunchBtn.addEventListener('pointerup', cancelPunchProgress);
     quickPunchBtn.addEventListener('pointerleave', cancelPunchProgress);
     quickPunchBtn.addEventListener('pointercancel', cancelPunchProgress);
+    quickPunchBtn.addEventListener('click', () => {
+      const k = activeKey();
+      const r = log[k] || {};
+      if (r.in && r.out) {
+        Haptic.tick();
+        toast('今日已完成打卡，点击下方“微调今日工时”可调整');
+      }
+    });
   }
 
   // ---------- 渐进式工时微调抽屉控制器（先选部位，再调数值） ----------
   let adjData = { inTime: '08:30', outTime: '17:30', lunchMin: 60 };
   let adjActivePart = 'in'; // 'in' | 'out' | 'lunch'
 
+  // ---------- 定时器水平滑动刻度盘 (左右滑动手感高精度微调) ----------
+  let dialStartX = 0;
+  let dialStartMin = 0;
+  let isDialDragging = false;
+  let isDialInitialized = false;
+  const PIXELS_PER_5MIN = 12;
+
+  function initDialScroller() {
+    if (isDialInitialized) return;
+    const track = $('adj-dial-track');
+    const viewport = $('adj-dial-viewport');
+    if (!track || !viewport) return;
+    isDialInitialized = true;
+
+    // 动态生成 -120分钟 到 +120分钟 的刻度线
+    let ticksHtml = '';
+    for (let delta = -120; delta <= 120; delta += 5) {
+      const isMajor = delta % 30 === 0;
+      const isMed = delta % 15 === 0 && !isMajor;
+      const cls = isMajor ? 'major' : (isMed ? 'med' : '');
+      const sign = delta > 0 ? `+${delta}` : (delta === 0 ? '0' : `${delta}`);
+      const label = isMajor ? `<span class="tick-label">${sign}</span>` : '';
+      ticksHtml += `<div class="adj-dial-tick ${cls}" data-delta="${delta}"><div class="tick-line"></div>${label}</div>`;
+    }
+    track.innerHTML = ticksHtml;
+
+    viewport.addEventListener('pointerdown', e => {
+      isDialDragging = true;
+      dialStartX = e.clientX;
+      viewport.setPointerCapture(e.pointerId);
+      if (adjActivePart === 'lunch') {
+        dialStartMin = adjData.lunchMin;
+      } else if (adjActivePart === 'in') {
+        dialStartMin = toMin(adjData.inTime);
+      } else {
+        dialStartMin = toMin(adjData.outTime);
+      }
+      viewport.style.cursor = 'grabbing';
+    });
+
+    viewport.addEventListener('pointermove', e => {
+      if (!isDialDragging) return;
+      const dx = e.clientX - dialStartX;
+      const deltaMinutes = -Math.round(dx / PIXELS_PER_5MIN) * 5;
+
+      let newMin = dialStartMin + deltaMinutes;
+      if (adjActivePart === 'lunch') {
+        newMin = Math.max(0, Math.min(240, newMin));
+        if (newMin !== adjData.lunchMin) {
+          adjData.lunchMin = newMin;
+          Haptic.tick();
+          updateAdjustSheetUI();
+        }
+      } else {
+        if (newMin < 0) newMin += 1440;
+        if (newMin >= 1440) newMin %= 1440;
+        const newTimeStr = `${pad(Math.floor(newMin / 60))}:${pad(newMin % 60)}`;
+        if (adjActivePart === 'in' && newTimeStr !== adjData.inTime) {
+          adjData.inTime = newTimeStr;
+          Haptic.tick();
+          updateAdjustSheetUI();
+        } else if (adjActivePart === 'out' && newTimeStr !== adjData.outTime) {
+          adjData.outTime = newTimeStr;
+          Haptic.tick();
+          updateAdjustSheetUI();
+        }
+      }
+
+      const visualOffset = (dx % (PIXELS_PER_5MIN * 6));
+      track.style.transform = `translateX(${visualOffset}px)`;
+    });
+
+    const endDrag = e => {
+      if (!isDialDragging) return;
+      isDialDragging = false;
+      viewport.style.cursor = '';
+      track.style.transition = 'transform 0.2s var(--ease-fluid)';
+      track.style.transform = 'translateX(0px)';
+      setTimeout(() => {
+        track.style.transition = 'none';
+      }, 220);
+    };
+
+    viewport.addEventListener('pointerup', endDrag);
+    viewport.addEventListener('pointercancel', endDrag);
+  }
+
   function switchAdjustPart(part) {
     adjActivePart = part || 'in';
+    const dialTitle = $('adj-dial-title');
+    if (dialTitle) {
+      dialTitle.textContent = adjActivePart === 'lunch'
+        ? '左右滑动调节午休时长'
+        : (adjActivePart === 'in' ? '左右滑动微调上班时间' : '左右滑动微调下班时间');
+    }
     document.querySelectorAll('#adj-tabs .adj-tab').forEach(tab => {
       tab.classList.toggle('on', tab.dataset.part === adjActivePart);
     });
@@ -1799,6 +2139,7 @@
     adjData.outTime = r.out || settings.routineOut || '17:30';
     adjData.lunchMin = r.lunch != null ? r.lunch : (settings.lunch || 60);
 
+    initDialScroller();
     switchAdjustPart(initialPart);
     updateAdjustSheetUI();
     $('adjust-mask').hidden = false;
