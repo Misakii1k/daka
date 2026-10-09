@@ -110,11 +110,15 @@ button{background:none;border:none;cursor:pointer;transition:transform var(--m3-
 button:active{transform:scale(.96)}
 .num{font-variant-numeric:tabular-nums}
 
-/* 视图容器 */
-#views{position:relative;min-height:100%;padding-bottom:calc(var(--tab-h) + env(safe-area-inset-bottom))}
-.view{display:none;padding:calc(28px + env(safe-area-inset-top)) 20px 24px;min-height:calc(100vh - var(--tab-h))}
+/* 视图容器 — 多方向页面切换动效 */
+#views{position:relative;min-height:100%;padding-bottom:calc(var(--tab-h) + env(safe-area-inset-bottom));overflow:hidden}
+.view{display:none;padding:calc(28px + env(safe-area-inset-top)) 20px 24px;min-height:calc(100vh - var(--tab-h));will-change:transform,opacity}
 .view.on{display:block;animation:m3ViewIn var(--m3-dur-med) var(--m3-easing-decelerate)}
+.view.on.slide-left{animation:m3ViewSlideLeft var(--m3-dur-med) var(--m3-easing-decelerate)}
+.view.on.slide-right{animation:m3ViewSlideRight var(--m3-dur-med) var(--m3-easing-decelerate)}
 @keyframes m3ViewIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+@keyframes m3ViewSlideLeft{from{opacity:0;transform:translateX(60px)}to{opacity:1;transform:none}}
+@keyframes m3ViewSlideRight{from{opacity:0;transform:translateX(-60px)}to{opacity:1;transform:none}}
 
 .date{font-size:14px;color:var(--mute)}
 .big{font-size:56px;font-weight:800;letter-spacing:-1.5px;margin-top:6px;line-height:1}
@@ -303,7 +307,7 @@ select{
   border-color: #fca5a5;
 }
 
-/* 底部导航栏 */
+/* 底部导航栏 — 含滑动指示器 */
 .tabs{
   position: fixed;
   left: 0;
@@ -328,23 +332,27 @@ select{
   justify-content: center;
   gap: 4px;
   letter-spacing: 0.5px;
-  transition: all var(--m3-dur-short) ease;
+  transition: color var(--m3-dur-short) ease, font-weight var(--m3-dur-short) ease;
 }
 .tabs button.on{
   color: var(--md-ink);
   font-weight: 800;
 }
-.tabs button.on::after{
-  content: "";
+/* 滑动指示器 pill — 位置由 JS 通过 CSS 自定义属性控制 */
+.tab-indicator{
   position: absolute;
   top: 8px;
-  width: 32px;
   height: 4.5px;
+  width: 32px;
   border-radius: 3px;
   background: var(--md-accent);
+  left: var(--tab-indicator-x, 0);
+  transition: left var(--m3-dur-med) var(--ease-spring);
+  pointer-events: none;
+  z-index: 6;
 }
 
-/* 统一底部抽屉与遮罩层 */
+/* 统一底部抽屉与遮罩层 — 含关闭退场动效 */
 .sheet-mask, .m3-sheet-mask{
   position: fixed;
   inset: 0;
@@ -353,6 +361,9 @@ select{
   -webkit-backdrop-filter: blur(4px);
   z-index: 90;
   animation: m3FadeIn var(--m3-dur-short) ease;
+}
+.sheet-mask.closing, .m3-sheet-mask.closing{
+  animation: m3FadeOut var(--m3-dur-short) ease forwards;
 }
 .sheet, .m3-bottom-sheet{
   position: fixed;
@@ -369,11 +380,16 @@ select{
   box-shadow: 0 -8px 32px rgba(15,23,42,.12);
   animation: m3SheetUp var(--m3-dur-med) var(--m3-easing-decelerate);
 }
+.sheet.closing, .m3-bottom-sheet.closing{
+  animation: m3SheetDown var(--m3-dur-short) var(--m3-easing-accelerate) forwards;
+}
 .sheet[hidden], .sheet-mask[hidden], .m3-bottom-sheet[hidden], .m3-sheet-mask[hidden]{
   display: none !important;
 }
 @keyframes m3FadeIn{from{opacity:0}to{opacity:1}}
+@keyframes m3FadeOut{from{opacity:1}to{opacity:0}}
 @keyframes m3SheetUp{from{transform:translateY(100%)}to{transform:none}}
+@keyframes m3SheetDown{from{transform:none}to{transform:translateY(100%)}}
 
 .m3-drag-handle{
   width: 36px;
@@ -415,12 +431,15 @@ select{
 .toast{position:fixed;left:50%;bottom:calc(var(--tab-h) + 100px);transform:translate(-50%,10px);background:var(--ink);color:#fff;font-size:14px;padding:10px 18px;border-radius:20px;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:20;white-space:nowrap}
 .toast.show{opacity:1;transform:translate(-50%,0)}
 
-/* 启动页 */
-.splash{position:fixed;inset:0;z-index:50;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;transition:opacity .3s ease}
+/* 启动页 — 增强型多层退场动效 */
+.splash{position:fixed;inset:0;z-index:50;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;transition:opacity .4s var(--m3-easing-emphasized)}
 .splash.out{opacity:0;pointer-events:none}
-.splash img{border-radius:20px;box-shadow:0 0 0 1px var(--line)}
-.splash-band{position:relative;width:120px;height:8px;border-radius:4px;background:var(--track);overflow:hidden}
-.splash-band i{position:absolute;left:30%;top:0;bottom:0;width:40%;border-radius:4px;background:var(--accent);transform-origin:left center;animation:grow .7s cubic-bezier(.2,.8,.2,1) backwards}
+.splash.out img{transform:scale(.85) translateY(-18px);opacity:0;transition:transform .45s var(--m3-easing-accelerate),opacity .35s ease}
+.splash.out .splash-band{transform:scaleX(.6);opacity:0;transition:transform .35s var(--m3-easing-accelerate),opacity .25s ease .05s}
+.splash img{border-radius:20px;box-shadow:0 0 0 1px var(--line);transition:transform .4s var(--m3-easing-decelerate),opacity .3s ease}
+.splash-band{position:relative;width:120px;height:8px;border-radius:4px;background:var(--track);overflow:hidden;transition:transform .35s var(--m3-easing-accelerate),opacity .3s ease}
+.splash-band i{position:absolute;left:0;top:0;bottom:0;width:0;border-radius:4px;background:var(--accent);animation:splashFill 0.7s cubic-bezier(.2,.8,.2,1) forwards}
+@keyframes splashFill{from{width:0}to{width:100%}}
 
 /* 统一控件体系：经典沉稳黑色宽幅大按钮 · 内嵌充能光轨 */
 .punch-hero-card{
@@ -752,9 +771,12 @@ select{
 
 .m3-sheet-footer{margin-top:14px}
 
-/* 长辈手写向导弹窗（沉浸式全屏，专注、零干扰） */
-.wizard-modal{position:fixed;inset:0;z-index:100;background:#ffffff;display:flex;flex-direction:column;overflow-y:auto;overscroll-behavior:contain;padding:calc(18px + env(safe-area-inset-top)) 20px calc(24px + env(safe-area-inset-bottom))}
+/* 长辈手写向导弹窗（沉浸式全屏，专注、零干扰）— 含进入退出过渡 */
+.wizard-modal{position:fixed;inset:0;z-index:100;background:#ffffff;display:flex;flex-direction:column;overflow-y:auto;overscroll-behavior:contain;padding:calc(18px + env(safe-area-inset-top)) 20px calc(24px + env(safe-area-inset-bottom));animation:m3FullIn var(--m3-dur-med) var(--m3-easing-decelerate)}
+.wizard-modal.closing{animation:m3FullOut var(--m3-dur-short) var(--m3-easing-accelerate) forwards}
 .wizard-modal[hidden]{display:none!important}
+@keyframes m3FullIn{from{opacity:0;transform:translateY(40px) scale(.97)}to{opacity:1;transform:none}}
+@keyframes m3FullOut{from{opacity:1;transform:none}to{opacity:0;transform:translateY(40px) scale(.97)}}
 .wiz-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px;position:relative}
 .wiz-close{position:absolute;right:-4px;top:-4px;width:44px;height:44px;border-radius:22px;background:#f2f2f2;font-size:20px;color:#444;display:flex;align-items:center;justify-content:center;cursor:pointer}
 .wiz-close:active{background:#e0e0e0}
@@ -844,8 +866,9 @@ select{
 .sc-btn{width:100%;height:52px;border-radius:16px;border:none;background:var(--md-ink);color:#ffffff;font-size:16px;font-weight:700;cursor:pointer;box-shadow:0 4px 14px rgba(15,23,42,.15);transition:transform var(--m3-dur-short) var(--m3-easing-emphasized),background .2s}
 .sc-btn:active{transform:scale(.98);background:#1e293b}
 
-/* 导出中心弹窗 */
-.export-modal{position:fixed;inset:0;z-index:110;background:#f8fafc;display:flex;flex-direction:column;overflow-y:auto;overscroll-behavior:contain;padding:calc(16px + env(safe-area-inset-top)) 18px calc(20px + env(safe-area-inset-bottom))}
+/* 导出中心弹窗 — 含进入退出过渡 */
+.export-modal{position:fixed;inset:0;z-index:110;background:#f8fafc;display:flex;flex-direction:column;overflow-y:auto;overscroll-behavior:contain;padding:calc(16px + env(safe-area-inset-top)) 18px calc(20px + env(safe-area-inset-bottom));animation:m3FullIn var(--m3-dur-med) var(--m3-easing-decelerate)}
+.export-modal.closing{animation:m3FullOut var(--m3-dur-short) var(--m3-easing-accelerate) forwards}
 .export-modal[hidden]{display:none!important}
 .em-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;position:relative}
 .em-close{position:absolute;right:-4px;top:-4px;width:40px;height:40px;border-radius:20px;background:#e2e8f0;font-size:22px;color:#334155;border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all var(--m3-dur-short) ease}
@@ -1412,7 +1435,7 @@ html[data-text-size="huge"] .adj-big-val{ font-size: 46px; }
   color: var(--md-ink);
 }
 
-/* 版本更新详情弹窗 */
+/* 版本更新详情弹窗 — 含缩放进入退出动效 */
 .update-modal{
   position: fixed;
   inset: 0;
@@ -1438,6 +1461,11 @@ html[data-text-size="huge"] .adj-big-val{ font-size: 46px; }
   box-shadow: 0 20px 50px rgba(0,0,0,.25);
   animation: m3ScaleIn .25s cubic-bezier(0.16, 1, 0.3, 1);
 }
+.update-modal.closing .um-card{
+  animation: m3ScaleOut .2s var(--m3-easing-accelerate) forwards;
+}
+@keyframes m3ScaleIn{from{opacity:0;transform:scale(.88)}to{opacity:1;transform:none}}
+@keyframes m3ScaleOut{from{opacity:1;transform:none}to{opacity:0;transform:scale(.88)}}
 .um-head{
   text-align: center;
   margin-bottom: 14px;

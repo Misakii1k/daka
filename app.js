@@ -216,6 +216,16 @@
     toastTimer = setTimeout(() => t.classList.remove('show'), 1800);
   };
 
+  // 通用动画关闭辅助函数：为元素添加 closing 类播放退场动画后 hidden
+  function animateClose(el, durationMs = 220) {
+    if (!el || el.hidden) return;
+    el.classList.add('closing');
+    setTimeout(() => {
+      el.hidden = true;
+      el.classList.remove('closing');
+    }, durationMs);
+  }
+
   // 当前生效的记录日期
   const activeKey = () => keyOf(new Date());
 
@@ -375,8 +385,8 @@
   }
 
   function closeEditSheet() {
-    $('mask').hidden = true;
-    $('sheet').hidden = true;
+    animateClose($('sheet'), 200);
+    animateClose($('mask'), 180);
     editingKey = null;
   }
 
@@ -911,7 +921,7 @@
   }
 
   function closeExportModal() {
-    $('export-modal').hidden = true;
+    animateClose($('export-modal'), 200);
   }
 
   function refreshExportPreview() {
@@ -1661,7 +1671,7 @@
 
   function closeWizard() {
     clearTimeout(autoAdvanceTimer);
-    $('wizard-modal').hidden = true;
+    animateClose($('wizard-modal'), 200);
     wizKey = null;
   }
 
@@ -2147,8 +2157,8 @@
   }
 
   function closeAdjustSheet() {
-    $('adjust-mask').hidden = true;
-    $('adjust-sheet').hidden = true;
+    animateClose($('adjust-sheet'), 200);
+    animateClose($('adjust-mask'), 180);
   }
 
   function shiftTimeMinutes(timeStr, deltaMinutes) {
@@ -2253,13 +2263,40 @@
   $('t-out').addEventListener('click', () => { Haptic.tick(); openAdjustSheet('out'); });
   if ($('t-left')) $('t-left').addEventListener('click', () => { Haptic.tick(); openAdjustSheet('lunch'); });
 
-  // ---------- 底部 Tab 切换 ----------
+  // ---------- 底部 Tab 切换 — 方向感知动效 ----------
+  const viewOrder = ['today', 'records', 'stats'];
+  let currentViewIndex = 0;
+
+  function updateTabIndicator() {
+    const tabsEl = document.querySelector('.tabs');
+    const indicator = $('tab-indicator');
+    const activeBtn = tabsEl.querySelector('button.on');
+    if (!indicator || !activeBtn) return;
+    const tabsRect = tabsEl.getBoundingClientRect();
+    const btnRect = activeBtn.getBoundingClientRect();
+    const x = btnRect.left - tabsRect.left + (btnRect.width - 32) / 2;
+    indicator.style.setProperty('--tab-indicator-x', x + 'px');
+  }
+
   document.querySelector('.tabs').addEventListener('click', e => {
     const b = e.target.closest('[data-go]');
     if (!b) return;
     Haptic.tick();
+    const targetView = b.dataset.go;
+    const targetIndex = viewOrder.indexOf(targetView);
+    const direction = targetIndex > currentViewIndex ? 'slide-left' : (targetIndex < currentViewIndex ? 'slide-right' : '');
+    currentViewIndex = targetIndex;
+
     document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x === b));
-    document.querySelectorAll('.view').forEach(v => v.classList.toggle('on', v.dataset.view === b.dataset.go));
+    document.querySelectorAll('.view').forEach(v => {
+      const isTarget = v.dataset.view === targetView;
+      v.classList.remove('on', 'slide-left', 'slide-right');
+      if (isTarget) {
+        v.classList.add('on');
+        if (direction) v.classList.add(direction);
+      }
+    });
+    updateTabIndicator();
     renderAll();
     window.scrollTo(0, 0);
   });
@@ -2273,9 +2310,13 @@
 
   renderAll();
 
-  // 启动页淡出
+  // 初始化 Tab 滑动指示器位置
+  requestAnimationFrame(updateTabIndicator);
+  window.addEventListener('resize', updateTabIndicator);
+
+  // 启动页增强退场：进度条填满后退场
   const splash = $('splash');
-  if (splash) setTimeout(() => { splash.classList.add('out'); setTimeout(() => splash.remove(), 320); }, 750);
+  if (splash) setTimeout(() => { splash.classList.add('out'); setTimeout(() => splash.remove(), 480); }, 800);
   setInterval(renderToday, 30000);
 
   // 启动打卡提醒与通知轮询（每 25 秒检测）
@@ -2341,7 +2382,8 @@
   }
 
   // ---------- 应用版本与云端更新控制器（首页浮窗与即时重载） ----------
-  const APP_VERSION = '1.0.0';
+  const APP_VERSION = '1.0.1';
+  const CLOUD_PAGES_ORIGIN = 'https://daka-f3o.pages.dev';
   let availableUpdate = null;
 
   function compareVersions(v1, v2) {
@@ -2384,6 +2426,29 @@
     if (notesEl) notesEl.textContent = data.releaseNotes || '性能与体验优化，建议升级。';
     if (metaEl) metaEl.textContent = `发布时间: ${data.buildTime || '最新'}`;
 
+    const isNative = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) || location.hostname === 'localhost';
+    const apkBtn = $('btn-download-apk');
+    const updateBtn = $('btn-do-update');
+    const apkUrl = data.apkUrl || data.downloadUrl || `${CLOUD_PAGES_ORIGIN}/release/daka-1.0.1-android.apk`;
+
+    if (apkBtn) {
+      if (isNative || data.apkUrl) {
+        apkBtn.style.display = 'block';
+        apkBtn.textContent = `下载最新 APK 安装包 (v${data.version})`;
+      } else {
+        apkBtn.style.display = 'none';
+      }
+    }
+    if (updateBtn) {
+      if (isNative) {
+        updateBtn.textContent = '重载本地应用';
+        updateBtn.className = 'em-act-btn secondary';
+      } else {
+        updateBtn.textContent = '立即更新并载入';
+        updateBtn.className = 'em-act-btn primary';
+      }
+    }
+
     mask.hidden = false;
     modal.hidden = false;
   }
@@ -2391,33 +2456,57 @@
   function closeUpdateModal() {
     const modal = $('update-modal');
     const mask = $('update-mask');
-    if (modal) modal.hidden = true;
-    if (mask) mask.hidden = true;
+    animateClose(modal, 220);
+    animateClose(mask, 200);
   }
 
   async function checkForAppUpdate(isManual = false) {
     if (isManual) toast('正在检查新版本...');
     try {
-      const endpoints = ['./version.json'];
+      const endpoints = [];
+      // 1. 用户手动设置的云端同步域名
       if (settings.cloudOrigin && settings.cloudOrigin.startsWith('http')) {
-        endpoints.unshift(`${settings.cloudOrigin.replace(/\/+$/, '')}/version.json`);
-      } else {
-        endpoints.push('https://daka-worklog.pages.dev/version.json');
+        endpoints.push(`${settings.cloudOrigin.replace(/\/+$/, '')}/version.json`);
+      }
+      // 2. 官方 Cloudflare Pages 生产域名（主用）
+      endpoints.push(`${CLOUD_PAGES_ORIGIN}/version.json`);
+      // 3. 当前运行环境自身域名（若线上部署在自定义域名下）
+      if (location.origin && !location.origin.includes('localhost') && location.origin.startsWith('http')) {
+        const originUrl = `${location.origin.replace(/\/+$/, '')}/version.json`;
+        if (!endpoints.includes(originUrl)) endpoints.push(originUrl);
       }
 
       let remoteData = null;
       for (const url of endpoints) {
         try {
-          const res = await fetch(`${url}?_t=${Date.now()}`, { cache: 'no-store' });
+          const ctrl = new AbortController();
+          const tid = setTimeout(() => ctrl.abort(), 6000);
+          const res = await fetch(`${url}?_t=${Date.now()}`, { cache: 'no-store', signal: ctrl.signal });
+          clearTimeout(tid);
           if (res.ok) {
-            remoteData = await res.json();
-            if (remoteData && remoteData.version) break;
+            const data = await res.json();
+            if (data && data.version) {
+              remoteData = data;
+              break;
+            }
+          }
+        } catch (e) {}
+      }
+
+      // 若处于非 Native 离线 PWA 环境，尝试本地 fallback
+      const isNative = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) || location.hostname === 'localhost';
+      if (!remoteData && !isNative) {
+        try {
+          const res = await fetch(`./version.json?_t=${Date.now()}`, { cache: 'no-store' });
+          if (res.ok) {
+            const localData = await res.json();
+            if (localData && localData.version) remoteData = localData;
           }
         } catch (e) {}
       }
 
       if (!remoteData || !remoteData.version) {
-        if (isManual) toast('未检测到更新服务器或当前网络不可达');
+        if (isManual) toast('无法连接到更新服务器，请检查手机网络');
         return;
       }
 
@@ -2448,6 +2537,16 @@
   if ($('btn-cancel-update')) $('btn-cancel-update').addEventListener('click', closeUpdateModal);
   if ($('update-mask')) $('update-mask').addEventListener('click', closeUpdateModal);
   if ($('btn-check-update')) $('btn-check-update').addEventListener('click', () => checkForAppUpdate(true));
+
+  if ($('btn-download-apk')) $('btn-download-apk').addEventListener('click', () => {
+    const url = (availableUpdate && (availableUpdate.apkUrl || availableUpdate.downloadUrl)) || `${CLOUD_PAGES_ORIGIN}/release/daka-1.0.1-android.apk`;
+    toast('正在跳转下载最新安装包...');
+    try {
+      window.open(url, '_system') || window.open(url, '_blank');
+    } catch (e) {
+      window.location.href = url;
+    }
+  });
 
   if ($('btn-do-update')) $('btn-do-update').addEventListener('click', async () => {
     toast('正在清理缓存并载入新版本...');
