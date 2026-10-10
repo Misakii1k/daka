@@ -1974,18 +1974,26 @@
     if (!currentExportReport || !window.SalaryExporter) return;
     const themeId = ($('em-theme-select') && $('em-theme-select').value) || 'receipt';
     const theme = window.SalaryExporter.ThemeRegistry[themeId] || window.SalaryExporter.ThemeRegistry.receipt;
-    const themeLabel = theme ? theme.name.split('（')[0] : '核算';
-    toast(`正在生成${themeLabel}长图...`);
-    const ok = await window.SalaryExporter.exportLongImage(currentExportReport, themeId);
-    if (ok) toast(`已保存${themeLabel}长图`);
-    else toast('图片生成失败，请重试');
+    const themeLabel = theme ? theme.name : '核算';
+    toast(`正在导出${themeLabel}长图...`);
+    const res = await window.SalaryExporter.exportLongImage(currentExportReport, themeId);
+    if (res && res.ok) {
+      toast(res.message || `已保存${themeLabel}长图`);
+    } else {
+      toast('长图生成失败，请重试');
+    }
   });
 
   // 导出明细表格
-  $('btn-export-excel').addEventListener('click', () => {
+  $('btn-export-excel').addEventListener('click', async () => {
     if (!currentExportReport || !window.SalaryExporter) return;
-    window.SalaryExporter.exportExcelCsv(currentExportReport);
-    toast('已导出明细表格');
+    toast('正在导出表格...');
+    const res = await window.SalaryExporter.exportExcelCsv(currentExportReport);
+    if (res && res.ok) {
+      toast(res.message || '已导出表格');
+    } else {
+      toast('表格导出失败，请重试');
+    }
   });
 
   // ---------- 长辈手写三步向导控制器（方案 A：分格引导 + 离线神经网络） ----------
@@ -3154,7 +3162,7 @@
   }
 
   // ---------- 应用版本与云端更新控制器（首页浮窗与即时重载） ----------
-  const APP_VERSION = '1.0.5';
+  const APP_VERSION = '1.0.6';
   const CLOUD_PAGES_ORIGIN = 'https://daka-f3o.pages.dev';
   let availableUpdate = null;
 

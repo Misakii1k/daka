@@ -6,7 +6,10 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 
-const ARTIFACT_DIR = 'C:\\Users\\87850\\.gemini\\antigravity\\brain\\fa4956b3-5e10-4a9c-98b0-2407f2297661';
+const ARTIFACT_DIR = process.env.ARTIFACT_DIR || path.join(__dirname, 'tmp_artifacts');
+if (!fs.existsSync(ARTIFACT_DIR)) {
+  fs.mkdirSync(ARTIFACT_DIR, { recursive: true });
+}
 
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));

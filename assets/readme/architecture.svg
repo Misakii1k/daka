@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 360" width="100%" height="auto" fill="none">
+  <defs>
+    <linearGradient id="archBgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0B0F19" />
+      <stop offset="100%" stop-color="#111827" />
+    </linearGradient>
+    <linearGradient id="nodeGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#1E293B" />
+      <stop offset="100%" stop-color="#0F172A" />
+    </linearGradient>
+  </defs>
+
+  <!-- 背景底色 -->
+  <rect width="1200" height="360" rx="16" fill="url(#archBgGrad)" stroke="#334155" stroke-opacity="0.5" stroke-width="1.5" />
+
+  <!-- 顶部标题栏 -->
+  <g transform="translate(48, 36)">
+    <text x="0" y="0" fill="#F8FAFC" font-family="-apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif" font-size="20" font-weight="700">系统架构与数据流设计</text>
+    <text x="0" y="24" fill="#64748B" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="13">Local-First 本地优先驱动 · 跨端混合容器 · 原生能力流式交付</text>
+  </g>
+
+  <!-- 模块 1：客户端交互层 -->
+  <g transform="translate(48, 90)">
+    <rect width="330" height="230" rx="12" fill="url(#nodeGrad)" stroke="#334155" stroke-width="1" />
+    <rect x="0" y="0" width="330" height="40" rx="12" fill="#1E293B" stroke="#334155" stroke-width="1" />
+    <circle cx="20" cy="20" r="4" fill="#38BDF8" />
+    <text x="34" y="24" fill="#F1F5F9" font-family="-apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif" font-size="14" font-weight="700">1. 终端与视图交互层</text>
+
+    <g transform="translate(20, 56)">
+      <rect width="290" height="42" rx="6" fill="#0B0F19" stroke="#334155" stroke-width="1" />
+      <text x="14" y="26" fill="#E2E8F0" font-family="-apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif" font-size="12" font-weight="600">PWA 渐进式应用 / 离线 Service Worker</text>
+
+      <rect y="54" width="290" height="42" rx="6" fill="#0B0F19" stroke="#334155" stroke-width="1" />
+      <text x="14" y="80" fill="#E2E8F0" font-family="-apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif" font-size="12" font-weight="600">Capacitor Android 原生壳 (&lt; 5MB 包体)</text>
+
+      <rect y="108" width="290" height="42" rx="6" fill="#0B0F19" stroke="#334155" stroke-width="1" />
+      <text x="14" y="134" fill="#94A3B8" font-family="-apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif" font-size="12">极简去括号设计 · 0-24h 交互时间带</text>
+    </g>
+  </g>
+
+  <!-- 连接箭头 1 -> 2 -->
+  <path d="M 390 205 L 426 205" stroke="#475569" stroke-width="2" stroke-dasharray="4 4" />
+  <polygon points="432,205 424,200 424,210" fill="#64748B" />
+
+  <!-- 模块 2：核心计算与本地引擎 -->
+  <g transform="translate(435, 90)">
+    <rect width="330" height="230" rx="12" fill="url(#nodeGrad)" stroke="#FF5B2E" stroke-opacity="0.5" stroke-width="1.5" />
+    <rect x="0" y="0" width="330" height="40" rx="12" fill="#1E293B" stroke="#334155" stroke-width="1" />
+    <circle cx="20" cy="20" r="4" fill="#FF5B2E" />
+    <text x="34" y="24" fill="#F1F5F9" font-family="-apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif" font-size="14" font-weight="700">2. 本地计算与持久化引擎</text>
+
+    <g transform="translate(20, 56)">
+      <rect width="290" height="42" rx="6" fill="#0B0F19" stroke="#334155" stroke-width="1" />
+      <text x="14" y="26" fill="#E2E8F0" font-family="-apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif" font-size="12" font-weight="600">工时带推导与薪资/大写金额核算引擎</text>
+
+      <rect y="54" width="290" height="42" rx="6" fill="#0B0F19" stroke="#334155" stroke-width="1" />
+      <text x="14" y="80" fill="#E2E8F0" font-family="-apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif" font-size="12" font-weight="600">IndexedDB &amp; LocalStorage 离线数据库</text>
+
+      <rect y="108" width="290" height="42" rx="6" fill="#0B0F19" stroke="#334155" stroke-width="1" />
+      <text x="14" y="134" fill="#94A3B8" font-family="-apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif" font-size="12">轻量前向神经网络 (手写输入识别)</text>
+    </g>
+  </g>
+
+  <!-- 连接箭头 2 -> 3 -->
+  <path d="M 777 205 L 813 205" stroke="#475569" stroke-width="2" stroke-dasharray="4 4" />
+  <polygon points="819,205 811,200 811,210" fill="#64748B" />
+
+  <!-- 模块 3：原生桥接与云服务支持 -->
+  <g transform="translate(822, 90)">
+    <rect width="330" height="230" rx="12" fill="url(#nodeGrad)" stroke="#334155" stroke-width="1" />
+    <rect x="0" y="0" width="330" height="40" rx="12" fill="#1E293B" stroke="#334155" stroke-width="1" />
+    <circle cx="20" cy="20" r="4" fill="#10B981" />
+    <text x="34" y="24" fill="#F1F5F9" font-family="-apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif" font-size="14" font-weight="700">3. 原生能力与云端服务</text>
+
+    <g transform="translate(20, 56)">
+      <rect width="290" height="42" rx="6" fill="#0B0F19" stroke="#334155" stroke-width="1" />
+      <text x="14" y="26" fill="#E2E8F0" font-family="-apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif" font-size="12" font-weight="600">Android MediaStore 原生相册保存</text>
+
+      <rect y="54" width="290" height="42" rx="6" fill="#0B0F19" stroke="#334155" stroke-width="1" />
+      <text x="14" y="80" fill="#E2E8F0" font-family="-apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif" font-size="12" font-weight="600">Cloudflare Functions /api/export 服务端点</text>
+
+      <rect y="108" width="290" height="42" rx="6" fill="#0B0F19" stroke="#334155" stroke-width="1" />
+      <text x="14" y="134" fill="#94A3B8" font-family="-apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif" font-size="12">UTF-8 BOM 标准 CSV / Excel &amp; 热敏凭单</text>
+    </g>
+  </g>
+</svg>

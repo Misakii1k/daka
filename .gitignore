@@ -21,6 +21,7 @@ Thumbs.db
 dist/
 tmp/
 scratch/
+tmp_artifacts/
 release/
 www/
 android/.gradle/

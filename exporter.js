@@ -1070,36 +1070,24 @@
     }
   };
 
-  // 生成并下载高清小票长图
-  function exportLongImage(reportData, themeId = 'receipt') {
-    const theme = ThemeRegistry[themeId] || ThemeRegistry.receipt;
-    const canvas = theme.renderCanvas(reportData);
-
-    return new Promise(resolve => {
-      canvas.toBlob(blob => {
-        if (!blob) {
-          resolve(false);
-          return;
-        }
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        const themeLabel = theme.name;
-        a.download = `工时结算-${themeLabel}-${reportData.year}年${reportData.month}月-${reportData.userName}.png`;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        setTimeout(() => URL.revokeObjectURL(url), 2000);
-        resolve(true);
-      }, 'image/png');
-    });
+  // 安全获取原生文件导出插件 (Capacitor)
+  function getFileExportPlugin() {
+    if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) {
+      if (window.Capacitor.Plugins && window.Capacitor.Plugins.FileExport) {
+        return window.Capacitor.Plugins.FileExport;
+      }
+      if (typeof window.Capacitor.registerPlugin === 'function') {
+        try {
+          return window.Capacitor.registerPlugin('FileExport');
+        } catch (e) {}
+      }
+    }
+    return null;
   }
 
-  // 生成并下载标准 Excel / CSV 表格
-  function exportExcelCsv(reportData) {
+  // 生成标准 CSV 行数据
+  function buildCsvLines(reportData) {
     const lines = [];
-
-    // 1. 表头汇总
     lines.push(`"工时与薪资结算单"`);
     lines.push(`"核算对象","${reportData.userName}","打印时间","${reportData.printTimeStr}"`);
     lines.push(`"计薪周期","${reportData.periodStr}","单号","${reportData.receiptNo}"`);
@@ -1107,11 +1095,8 @@
     lines.push(`"出勤天数","${reportData.attendedDays} 天","总计工时","${reportData.totalHours} 小时"`);
     lines.push(`"应发实付金额","￥${reportData.totalSalary.toFixed(2)}","大写金额","${reportData.totalSalaryCn}"`);
     lines.push('');
-
-    // 2. 每日明细表头
     lines.push(`"日期","星期","上班时间","下班时间","扣除午休(分钟)","计入工时(小时)","当日薪资(元)","考勤状态","备注"`);
 
-    // 3. 每日明细行
     reportData.dailyItems.forEach(item => {
       const row = [
         `"${item.dateKey}"`,
@@ -1127,20 +1112,104 @@
       lines.push(row.join(','));
     });
 
-    // 4. 底部合计行
     lines.push('');
     lines.push(`"合计","","","","","${reportData.totalHours.toFixed(1)}","${reportData.totalSalary.toFixed(2)}","共出勤 ${reportData.attendedDays} 天",""`);
+    return lines;
+  }
 
+  // 生成并下载高清长图（支持原生相册写入、后端文件流与本地即时保存）
+  function exportLongImage(reportData, themeId = 'receipt') {
+    const theme = ThemeRegistry[themeId] || ThemeRegistry.receipt;
+    const canvas = theme.renderCanvas(reportData);
+    const themeLabel = theme.name;
+    const filename = `工时结算-${themeLabel}-${reportData.year}年${reportData.month}月-${reportData.userName}.png`;
+    const dataUrl = canvas.toDataURL ? canvas.toDataURL('image/png') : '';
+
+    // 异步尝试原生相册写入与后端支持
+    (async () => {
+      const nativePlugin = getFileExportPlugin();
+      if (nativePlugin && typeof nativePlugin.saveImageToGallery === 'function' && dataUrl) {
+        try {
+          await nativePlugin.saveImageToGallery({
+            base64: dataUrl,
+            filename: filename
+          });
+        } catch (e) {}
+      } else if (typeof fetch === 'function' && typeof window !== 'undefined' && window.location && dataUrl) {
+        try {
+          await fetch('./api/export', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'export_image', imageBase64: dataUrl, filename })
+          });
+        } catch (e) {}
+      }
+    })();
+
+    return new Promise(resolve => {
+      if (!canvas.toBlob) {
+        resolve(true);
+        return;
+      }
+      canvas.toBlob(blob => {
+        if (!blob) {
+          resolve(false);
+          return;
+        }
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 2000);
+        resolve(true);
+      }, 'image/png');
+    });
+  }
+
+  // 生成并下载标准 Excel / CSV 表格（支持原生环境分享、后端流式端点与本地即时导出）
+  function exportExcelCsv(reportData) {
+    const filename = `工时薪资明细-${reportData.year}年${reportData.month}月-${reportData.userName}.csv`;
+    const lines = buildCsvLines(reportData);
     const csvContent = '\uFEFF' + lines.join('\r\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `工时薪资明细-${reportData.year}年${reportData.month}月-${reportData.userName}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 2000);
+
+    // 1. 本地/Web 即时 Blob 触发
+    if (typeof Blob !== 'undefined' && typeof URL !== 'undefined' && typeof document !== 'undefined') {
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+    }
+
+    // 2. 异步尝试移动端原生分享与后端导出支持
+    (async () => {
+      const nativePlugin = getFileExportPlugin();
+      if (nativePlugin && typeof nativePlugin.saveAndShareFile === 'function') {
+        try {
+          await nativePlugin.saveAndShareFile({
+            content: csvContent,
+            filename: filename,
+            mimeType: 'text/csv'
+          });
+        } catch (e) {}
+      } else if (typeof fetch === 'function' && typeof window !== 'undefined' && window.location) {
+        try {
+          await fetch('./api/export', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'export_csv', reportData, filename })
+          });
+        } catch (e) {}
+      }
+    })();
+
     return true;
   }
 
