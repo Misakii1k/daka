@@ -136,9 +136,9 @@
             <span>文字大小</span>
             <div class="row-right">
               <select id="set-text-size">
-                <option value="standard">标准 (100%)</option>
-                <option value="large">大字 (115%)</option>
-                <option value="huge">特大 (126%)</option>
+                <option value="standard">标准</option>
+                <option value="large">大字</option>
+                <option value="huge">特大</option>
               </select>
             </div>
           </div>
@@ -146,7 +146,7 @@
             <span>触感振动反馈</span>
             <div class="row-right">
               <label class="switch-wrap">
-                <input type="checkbox" id="set-haptic" class="switch-input" checked>
+                <input id="set-haptic" class="switch-input" type="checkbox" checked>
                 <span class="switch-track"><span class="switch-thumb"></span></span>
               </label>
             </div>
@@ -155,10 +155,10 @@
             <span>打卡庆祝动效</span>
             <div class="row-right">
               <select id="set-celebration">
-                <option value="confetti">彩礼烟花</option>
-                <option value="banknote">金钞飘落</option>
-                <option value="both">双重动效 (烟花与金钞)</option>
-                <option value="none">关闭动效</option>
+                <option value="confetti">烟花</option>
+                <option value="banknote">金钞</option>
+                <option value="both">双重动效</option>
+                <option value="none">关闭</option>
               </select>
             </div>
           </div>
@@ -201,8 +201,8 @@
         </div>
       </div>
 
-      <!-- 卡片 3：数据存储与多端同步 -->
-      <div class="settings-card">
+      <!-- 卡片 3：数据存储与多端同步 (当前版本隐藏) -->
+      <div class="settings-card" id="card-storage-sync" hidden>
         <div class="settings-card-head">
           <span class="settings-card-title">数据存储与同步</span>
           <span class="settings-card-desc" id="storage-current-desc">默认本地离线 · 可选云端</span>
@@ -304,32 +304,38 @@
           <div class="settings-row">
             <span>时薪单价</span>
             <div class="row-right">
-              <input id="set-wage" type="number" min="0" max="9999" step="1" inputmode="decimal" style="width:84px;text-align:right;">
-              <small>元/小时</small>
+              <div class="row-input-wrap">
+                <input id="set-wage" type="number" min="0" max="9999" step="1" inputmode="decimal">
+                <span class="row-unit">元/小时</span>
+              </div>
             </div>
           </div>
           <div class="settings-row">
             <span>午休扣除</span>
             <div class="row-right">
-              <input id="set-lunch" type="number" min="0" max="240" step="5" inputmode="numeric" style="width:84px;text-align:right;">
-              <small>分钟</small>
+              <div class="row-input-wrap">
+                <input id="set-lunch" type="number" min="0" max="240" step="5" inputmode="numeric">
+                <span class="row-unit">分钟</span>
+              </div>
             </div>
           </div>
           <div class="settings-row">
             <span>标准日工时</span>
             <div class="row-right">
-              <input id="set-std" type="number" min="1" max="24" step="0.5" inputmode="decimal" style="width:84px;text-align:right;">
-              <small>小时</small>
+              <div class="row-input-wrap">
+                <input id="set-std" type="number" min="1" max="24" step="0.5" inputmode="decimal">
+                <span class="row-unit">小时</span>
+              </div>
             </div>
           </div>
           <div class="settings-row">
             <span>手写识别响应</span>
             <div class="row-right">
               <select id="set-hw-speed">
-                <option value="instant">极速 (100毫秒)</option>
-                <option value="fast" selected>灵敏 (180毫秒)</option>
-                <option value="balanced">均衡 (260毫秒)</option>
-                <option value="relaxed">从容 (380毫秒)</option>
+                <option value="instant">极速</option>
+                <option value="fast" selected>灵敏</option>
+                <option value="balanced">均衡</option>
+                <option value="relaxed">从容</option>
               </select>
             </div>
           </div>
@@ -378,8 +384,8 @@
   <label class="row">午休扣除<div class="sheet-inline-val"><input id="e-lunch" type="number" min="0" max="240" step="5" placeholder="60"><span>分钟</span></div></label>
   <label class="row">备注<input id="e-note" type="text" maxlength="40" placeholder="可不填"></label>
   <div class="sheet-act">
-    <button class="ghost danger" id="e-del" type="button">删除这天</button>
-    <button class="ghost" id="e-wiz" type="button">手写向导</button>
+    <button class="ghost danger" id="e-del" type="button">删除</button>
+    <button class="ghost" id="e-wiz" type="button">向导</button>
     <button class="ghost" id="e-cancel" type="button">取消</button>
     <button class="solid" type="submit">保存</button>
   </div>
@@ -471,11 +477,11 @@
 
       <div class="wiz-rest-title">选择休息时长</div>
       <div class="wiz-rest-presets" id="wiz-rest-presets">
-        <button type="button" class="preset-btn" data-min="0">不休息 (0分)</button>
-        <button type="button" class="preset-btn" data-min="30">休息半小时 (30分)</button>
-        <button type="button" class="preset-btn on" data-min="60">休息 1 小时 (60分)</button>
-        <button type="button" class="preset-btn" data-min="90">休息 1.5 小时 (90分)</button>
-        <button type="button" class="preset-btn" data-min="120">休息 2 小时 (120分)</button>
+        <button type="button" class="preset-btn" data-min="0">不休息</button>
+        <button type="button" class="preset-btn" data-min="30">半小时</button>
+        <button type="button" class="preset-btn on" data-min="60">1 小时</button>
+        <button type="button" class="preset-btn" data-min="90">1.5 小时</button>
+        <button type="button" class="preset-btn" data-min="120">2 小时</button>
       </div>
 
       <div class="wiz-custom-rest">
@@ -509,13 +515,13 @@
   </div>
 
   <div class="em-body">
-    <!-- 快捷参数调节卡片 (双行排版：上双列横向对称，下通栏版式) -->
+    <!-- 快捷参数调节卡片 -->
     <div class="em-controls">
       <div class="em-controls-row">
         <div class="em-ctrl-item">
           <label for="em-name-input">核算对象</label>
           <div class="em-input-wrap">
-            <input type="text" id="em-name-input" maxlength="12" placeholder="可不填（默认本人）">
+            <input type="text" id="em-name-input" maxlength="12" placeholder="默认本人">
           </div>
         </div>
         <div class="em-ctrl-item">
@@ -530,11 +536,11 @@
         <label for="em-theme-select">凭单视觉版式</label>
         <div class="em-input-wrap">
           <select id="em-theme-select">
-            <option value="receipt">热敏收银小票（经典凭单）</option>
-            <option value="timecard">复古打卡工卡（机械纸卡）</option>
-            <option value="statement">现代极简报表（商务对账）</option>
-            <option value="calendar">日历热力手账（出勤图鉴）</option>
-            <option value="memo">胶带记账便签（随身手账）</option>
+            <option value="receipt">小票</option>
+            <option value="timecard">工卡</option>
+            <option value="statement">报表</option>
+            <option value="calendar">手账</option>
+            <option value="memo">便签</option>
           </select>
         </div>
       </div>
@@ -543,16 +549,16 @@
     <!-- 纸张实时预览卡片 -->
     <div class="em-preview-container">
       <div class="em-preview-header">
-        <span class="em-preview-title">实时凭单长图预览</span>
-        <span class="em-preview-sub">切换上方版式即时重绘</span>
+        <span class="em-preview-title">凭单预览</span>
+        <span class="em-preview-sub">即时重绘</span>
       </div>
       <div class="receipt-paper" id="receipt-paper"></div>
     </div>
   </div>
 
   <div class="em-footer">
-    <button class="em-act-btn primary" id="btn-export-image" type="button">保存核算高清长图 (PNG)</button>
-    <button class="em-act-btn secondary" id="btn-export-excel" type="button">导出明细表格 (.csv)</button>
+    <button class="em-act-btn primary" id="btn-export-image" type="button">保存长图</button>
+    <button class="em-act-btn secondary" id="btn-export-excel" type="button">导出表格</button>
   </div>
 </div>
 
@@ -744,16 +750,20 @@
     </div>
     <div class="ctp-wheels-container">
       <div class="ctp-wheel-col">
-        <div class="ctp-col-label">时 (00-23)</div>
-        <div class="ctp-wheel-viewport" id="ctp-wheel-h">
-          <div class="ctp-wheel-track" id="ctp-track-h"></div>
+        <div class="ctp-col-label">时</div>
+        <div class="ctp-col-box">
+          <div class="ctp-wheel-viewport" id="ctp-wheel-h">
+            <div class="ctp-wheel-track" id="ctp-track-h"></div>
+          </div>
           <div class="ctp-wheel-highlight"></div>
         </div>
       </div>
       <div class="ctp-wheel-col">
-        <div class="ctp-col-label">分 (00-59)</div>
-        <div class="ctp-wheel-viewport" id="ctp-wheel-m">
-          <div class="ctp-wheel-track" id="ctp-track-m"></div>
+        <div class="ctp-col-label">分</div>
+        <div class="ctp-col-box">
+          <div class="ctp-wheel-viewport" id="ctp-wheel-m">
+            <div class="ctp-wheel-track" id="ctp-track-m"></div>
+          </div>
           <div class="ctp-wheel-highlight"></div>
         </div>
       </div>

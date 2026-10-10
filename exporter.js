@@ -1045,32 +1045,32 @@
   const ThemeRegistry = {
     receipt: {
       id: 'receipt',
-      name: '热敏收银小票（经典凭单）',
+      name: '小票',
       renderCanvas: renderReceiptCanvas
     },
     timecard: {
       id: 'timecard',
-      name: '复古打卡工卡（机械纸卡）',
+      name: '工卡',
       renderCanvas: renderTimecardCanvas
     },
     statement: {
       id: 'statement',
-      name: '现代极简报表（商务对账）',
+      name: '报表',
       renderCanvas: renderStatementCanvas
     },
     calendar: {
       id: 'calendar',
-      name: '日历热力手账（出勤图鉴）',
+      name: '手账',
       renderCanvas: renderCalendarCanvas
     },
     memo: {
       id: 'memo',
-      name: '胶带记账便签（随身手账）',
+      name: '便签',
       renderCanvas: renderMemoCanvas
     }
   };
 
-  // 生成并下载高清小票长图 (PNG)
+  // 生成并下载高清小票长图
   function exportLongImage(reportData, themeId = 'receipt') {
     const theme = ThemeRegistry[themeId] || ThemeRegistry.receipt;
     const canvas = theme.renderCanvas(reportData);
@@ -1084,7 +1084,7 @@
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        const themeLabel = theme.name.split('（')[0];
+        const themeLabel = theme.name;
         a.download = `工时结算-${themeLabel}-${reportData.year}年${reportData.month}月-${reportData.userName}.png`;
         document.body.appendChild(a);
         a.click();

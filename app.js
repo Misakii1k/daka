@@ -359,10 +359,111 @@
 
   const escapeHtml = s => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-  $('w-prev').addEventListener('click', () => { weekStart = addDays(weekStart, -7); renderWeek(); });
-  $('w-next').addEventListener('click', () => { weekStart = addDays(weekStart, 7); renderWeek(); });
-  $('m-prev').addEventListener('click', () => { monthCur = new Date(monthCur.getFullYear(), monthCur.getMonth() - 1, 1); renderMonth(); });
-  $('m-next').addEventListener('click', () => { monthCur = new Date(monthCur.getFullYear(), monthCur.getMonth() + 1, 1); renderMonth(); });
+  // 横向滑动推入过渡动效辅助函数
+  function triggerSwipeAnim(el, direction) {
+    if (!el) return;
+    const animClass = direction === 'left' ? 'swipe-slide-left' : 'swipe-slide-right';
+    el.classList.remove('swipe-slide-left', 'swipe-slide-right');
+    void el.offsetWidth;
+    el.classList.add(animClass);
+    setTimeout(() => {
+      el.classList.remove(animClass);
+    }, 320);
+  }
+
+  // 通用水平滑动手势绑定器
+  function bindSwipeGestures(el, { onSwipeLeft, onSwipeRight }) {
+    if (!el) return;
+    let startX = 0;
+    let startY = 0;
+    let startTime = 0;
+    let isHorizontal = false;
+
+    el.addEventListener('touchstart', e => {
+      if (e.touches.length !== 1) return;
+      const t = e.touches[0];
+      startX = t.clientX;
+      startY = t.clientY;
+      startTime = Date.now();
+      isHorizontal = false;
+    }, { passive: true });
+
+    el.addEventListener('touchmove', e => {
+      if (e.touches.length !== 1) return;
+      const t = e.touches[0];
+      const dx = t.clientX - startX;
+      const dy = t.clientY - startY;
+      if (!isHorizontal && Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy) * 1.3) {
+        isHorizontal = true;
+      }
+    }, { passive: true });
+
+    el.addEventListener('touchend', e => {
+      if (!isHorizontal && Math.abs(e.changedTouches[0].clientX - startX) < 40) return;
+      const t = e.changedTouches[0];
+      const dx = t.clientX - startX;
+      const dy = t.clientY - startY;
+      const dt = Date.now() - startTime;
+      if (dt < 650 && Math.abs(dx) >= 42 && Math.abs(dx) > Math.abs(dy) * 1.3) {
+        Haptic.tick();
+        if (dx < 0 && typeof onSwipeLeft === 'function') {
+          onSwipeLeft();
+        } else if (dx > 0 && typeof onSwipeRight === 'function') {
+          onSwipeRight();
+        }
+      }
+    }, { passive: true });
+  }
+
+  function handleWeekPrev() {
+    weekStart = addDays(weekStart, -7);
+    renderWeek();
+    triggerSwipeAnim($('w-title'), 'right');
+    triggerSwipeAnim($('w-total'), 'right');
+    triggerSwipeAnim($('w-rows'), 'right');
+  }
+
+  function handleWeekNext() {
+    weekStart = addDays(weekStart, 7);
+    renderWeek();
+    triggerSwipeAnim($('w-title'), 'left');
+    triggerSwipeAnim($('w-total'), 'left');
+    triggerSwipeAnim($('w-rows'), 'left');
+  }
+
+  function handleMonthPrev() {
+    monthCur = new Date(monthCur.getFullYear(), monthCur.getMonth() - 1, 1);
+    renderMonth();
+    triggerSwipeAnim($('m-title'), 'right');
+    triggerSwipeAnim($('m-list'), 'right');
+  }
+
+  function handleMonthNext() {
+    monthCur = new Date(monthCur.getFullYear(), monthCur.getMonth() + 1, 1);
+    renderMonth();
+    triggerSwipeAnim($('m-title'), 'left');
+    triggerSwipeAnim($('m-list'), 'left');
+  }
+
+  $('w-prev').addEventListener('click', handleWeekPrev);
+  $('w-next').addEventListener('click', handleWeekNext);
+  $('m-prev').addEventListener('click', handleMonthPrev);
+  $('m-next').addEventListener('click', handleMonthNext);
+
+  // 记录页周与月卡片手势滑动监听
+  const weekCardBox = $('w-rows') ? $('w-rows').parentNode : null;
+  if (weekCardBox) {
+    bindSwipeGestures(weekCardBox, {
+      onSwipeLeft: handleWeekNext,
+      onSwipeRight: handleWeekPrev
+    });
+  }
+  if ($('m-list')) {
+    bindSwipeGestures($('m-list'), {
+      onSwipeLeft: handleMonthNext,
+      onSwipeRight: handleMonthPrev
+    });
+  }
 
   // ---------- 记录修改与删除抽屉控制器 ----------
   let editingKey = null;
@@ -492,8 +593,36 @@
     }
   }
 
-  $('s-prev').addEventListener('click', () => { statMonth = new Date(statMonth.getFullYear(), statMonth.getMonth() - 1, 1); renderStats(); });
-  $('s-next').addEventListener('click', () => { statMonth = new Date(statMonth.getFullYear(), statMonth.getMonth() + 1, 1); renderStats(); });
+  function handleStatPrev() {
+    statMonth = new Date(statMonth.getFullYear(), statMonth.getMonth() - 1, 1);
+    renderStats();
+    triggerSwipeAnim($('s-title'), 'right');
+    triggerSwipeAnim($('s-total'), 'right');
+    triggerSwipeAnim($('s-grid'), 'right');
+    triggerSwipeAnim($('s-miss'), 'right');
+    triggerSwipeAnim($('s-salary-val'), 'right');
+  }
+
+  function handleStatNext() {
+    statMonth = new Date(statMonth.getFullYear(), statMonth.getMonth() + 1, 1);
+    renderStats();
+    triggerSwipeAnim($('s-title'), 'left');
+    triggerSwipeAnim($('s-total'), 'left');
+    triggerSwipeAnim($('s-grid'), 'left');
+    triggerSwipeAnim($('s-miss'), 'left');
+    triggerSwipeAnim($('s-salary-val'), 'left');
+  }
+
+  $('s-prev').addEventListener('click', handleStatPrev);
+  $('s-next').addEventListener('click', handleStatNext);
+
+  // 统计页面滑动手势监听
+  if ($('v-stats')) {
+    bindSwipeGestures($('v-stats'), {
+      onSwipeLeft: handleStatNext,
+      onSwipeRight: handleStatPrev
+    });
+  }
 
   // ---------- 设置与偏好交互绑定 ----------
   if ($('set-theme')) $('set-theme').value = settings.themeMode || 'system';
@@ -672,10 +801,10 @@
   }
 
   // 初始化所有多项下拉配置项
-  initCustomSelectEnhancer('set-text-size', '选择文字大小');
-  initCustomSelectEnhancer('set-celebration', '选择打卡庆祝动效');
-  initCustomSelectEnhancer('set-hw-speed', '手写识别响应速度');
-  initCustomSelectEnhancer('em-theme-select', '选择工时单据样式');
+  initCustomSelectEnhancer('set-text-size', '文字大小');
+  initCustomSelectEnhancer('set-celebration', '打卡动效');
+  initCustomSelectEnhancer('set-hw-speed', '识别速度');
+  initCustomSelectEnhancer('em-theme-select', '版式选择');
 
   // 文字大小切换监听
   if ($('set-text-size')) {
@@ -1870,10 +1999,10 @@
   let currentGridDigits = ['', '', '', ''];
   let autoAdvanceTimer = null;
   const gridTipTexts = [
-    '请书写：时 十位（0、1 或 2）',
-    '请书写：时 个位（0 到 9，20点后为 0 到 3）',
-    '请书写：分 十位（0 到 5，不能达到 60 分）',
-    '请书写：分 个位（0 到 9）'
+    '请书写：时十位，范围 0、1 或 2',
+    '请书写：时个位，范围 0 到 9',
+    '请书写：分十位，范围 0 到 5',
+    '请书写：分个位，范围 0 到 9'
   ];
 
   function isValidTimeStr(str) {
@@ -1888,16 +2017,16 @@
     const num = Number(char);
     if (idx === 0) {
       if (num > 2) {
-        return { valid: false, reason: '小时十位只能是 0、1 或 2（一天为 00~23 小时）' };
+        return { valid: false, reason: '小时十位只能是 0、1 或 2' };
       }
     } else if (idx === 1) {
       const d0 = currentDigits[0];
       if (d0 === '2' && num > 3) {
-        return { valid: false, reason: '小时不能超过 23（时十位为2时，个位只能是 0 到 3）' };
+        return { valid: false, reason: '小时不能超过 23' };
       }
     } else if (idx === 2) {
       if (num > 5) {
-        return { valid: false, reason: '分钟十位只能是 0 到 5（一小时最多 59 分钟）' };
+        return { valid: false, reason: '分钟十位只能是 0 到 5' };
       }
     } else if (idx === 3) {
       return { valid: true };
