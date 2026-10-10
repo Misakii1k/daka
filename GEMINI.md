@@ -16,3 +16,20 @@
 
 ## 4. 数据操作与 UI 状态联动规范
 - **打卡记录即时响应**：在 `app.js` 中调用 `saveRecord()` 完成数据写入并更新存储后，必须立即触发日历组件重新渲染（`renderCalendar()`）和看板统计刷新，保障用户界面视图即时同步，严禁依赖页面手动刷新。
+
+## 5. 任务交付与自动推送部署闭环（严禁漏推）
+- **严禁停留在本地等待用户催促**：每次完成用户提出的功能开发、UI 优化或 Bug 修复后，**必须在当前回合内一站式完成从版本递增、移动端打包、Git 提交推送至 Cloudflare 线上部署的完整闭环**，绝不允许停留在本地等待用户告知“推送下”。
+- **版本号联动递增**：每次发布均需递增 Patch 版本号（如 1.0.4 -> 1.0.5），同步更新：
+  - `package.json` 中的 `version`
+  - `app.js` 与 `www/app.js` 中的 `APP_VERSION`
+  - `version.json` 与 `www/version.json` 中的 `version`, `buildTime`, `releaseNotes`, `apkUrl`
+  - `functions/version.json.ts` 中的 `version`, `buildTime`, `releaseNotes`
+  - `sw.js` 与 `www/sw.js` 中的 `CACHE` 标识
+  - `android/app/build.gradle` 中的 `versionCode` 和 `versionName`
+- **全自动化发布执行流**：
+  1. 同步根目录与 `www/` 静态代码；
+  2. 执行 `npx cap sync android`，并在 `android/` 下执行 `./gradlew.bat assembleDebug` 构建 APK；
+  3. 将生成的 APK 统一归档至 `release/daka-<version>-android.apk` 与 `release/daka-latest.apk`；
+  4. 执行 `git add .`、`git commit` 与 `git push origin main`；
+  5. 挂载代理执行 `wrangler pages deploy . --project-name daka` 部署到 Cloudflare Pages；
+  6. 验证各端无误后直接交付。
