@@ -348,18 +348,20 @@ select{
   color: var(--md-ink);
   font-weight: 800;
 }
-/* 滑动指示器 pill — 位置由 JS 通过 CSS 自定义属性控制 */
+/* 滑动指示器 pill — 支持 Google 灵动弹性拉伸与阻尼归位 */
 .tab-indicator{
   position: absolute;
   top: 8px;
   height: 4.5px;
-  width: 32px;
+  width: var(--tab-indicator-w, 32px);
   border-radius: 3px;
   background: var(--md-accent);
   left: var(--tab-indicator-x, 0);
-  transition: left var(--m3-dur-med) var(--ease-spring);
+  transform-origin: var(--tab-indicator-origin, center center);
+  transition: left 0.32s cubic-bezier(0.2, 0, 0, 1), width 0.24s cubic-bezier(0.34, 1.56, 0.64, 1), transform 0.2s cubic-bezier(0.2, 0, 0, 1);
   pointer-events: none;
   z-index: 6;
+  box-shadow: 0 1px 8px rgba(255,91,46,.45);
 }
 
 /* 统一底部抽屉与遮罩层 — 含关闭退场动效 */
@@ -1424,7 +1426,7 @@ html[data-text-size="huge"] .adj-big-val{ font-size: 46px; }
   transform: translateX(18px);
 }
 
-/* 首页新版本悬浮更新浮窗 */
+/* 首页新版本悬浮更新浮窗 — Google Pill 灵动呼吸浮岛 */
 .home-update-float{
   position: relative;
   margin-bottom: 20px;
@@ -1439,13 +1441,35 @@ html[data-text-size="huge"] .adj-big-val{ font-size: 46px; }
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
   border: 1.5px solid var(--md-outline);
-  border-radius: 20px;
-  padding: 8px 12px 8px 14px;
-  box-shadow: 0 4px 16px rgba(15,23,42,.08), 0 1px 3px rgba(15,23,42,.04);
-  animation: m3FloatIn .35s cubic-bezier(0.16, 1, 0.3, 1);
+  border-radius: 22px;
+  padding: 9px 12px 9px 14px;
+  box-shadow: 0 4px 18px rgba(15,23,42,.08), 0 1px 3px rgba(15,23,42,.04);
+  animation: m3FloatIn 0.4s cubic-bezier(0.16, 1, 0.3, 1), m3FloatBreathing 4s ease-in-out infinite 0.4s;
+  transition: transform 0.24s var(--ease-fluid), box-shadow 0.24s var(--ease-fluid);
 }
 .home-update-float[hidden]{
   display: none !important;
+}
+.home-update-float.closing{
+  animation: m3FloatOut 0.24s cubic-bezier(0.3, 0, 0.8, 0.15) forwards;
+}
+@keyframes m3FloatIn{
+  from{ transform: translateY(-16px) scale(0.96); opacity: 0; }
+  to{ transform: translateY(0) scale(1); opacity: 1; }
+}
+@keyframes m3FloatOut{
+  0%{ transform: translateY(0) scale(1); opacity: 1; }
+  100%{ transform: translateY(-14px) scale(0.93); opacity: 0; }
+}
+@keyframes m3FloatBreathing{
+  0%, 100%{
+    transform: translateY(0);
+    box-shadow: 0 4px 18px rgba(15,23,42,.08), 0 1px 3px rgba(15,23,42,.04);
+  }
+  50%{
+    transform: translateY(-2.5px);
+    box-shadow: 0 8px 24px rgba(249,115,22,.14), 0 2px 6px rgba(15,23,42,.05);
+  }
 }
 .huf-content{
   display: flex;
@@ -1464,6 +1488,21 @@ html[data-text-size="huge"] .adj-big-val{ font-size: 46px; }
   border-radius: 8px;
   letter-spacing: 0.3px;
   flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.huf-badge-dot{
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #ffffff;
+  display: inline-block;
+  animation: m3BadgePing 1.8s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+@keyframes m3BadgePing{
+  0%, 100%{ transform: scale(0.85); opacity: 0.9; }
+  50%{ transform: scale(1.4); opacity: 1; box-shadow: 0 0 6px rgba(255,255,255,.9); }
 }
 .huf-text{
   font-size: 13.5px;
@@ -1485,10 +1524,11 @@ html[data-text-size="huge"] .adj-big-val{ font-size: 46px; }
   cursor: pointer;
   flex-shrink: 0;
   box-shadow: 0 3px 10px rgba(249,115,22,.28);
-  transition: transform var(--m3-dur-short) var(--ease-fluid), opacity .15s ease;
+  transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), opacity .15s ease, box-shadow .2s ease;
 }
 .huf-btn:active{
-  transform: scale(0.96);
+  transform: scale(0.94);
+  box-shadow: 0 1px 4px rgba(249,115,22,.2);
 }
 .huf-close{
   background: transparent;
@@ -1503,18 +1543,19 @@ html[data-text-size="huge"] .adj-big-val{ font-size: 46px; }
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  transition: background .15s ease, color .15s ease;
+  transition: background .18s ease, color .18s ease, transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 .huf-close:active{
   background: rgba(0,0,0,.08);
   color: var(--md-ink);
+  transform: rotate(90deg) scale(0.92);
 }
 
-/* 版本更新详情弹窗 — 含缩放进入退出动效 */
+/* 版本更新详情弹窗 — Google Material 3 容器变形与渐次入场 */
 .update-modal{
   position: fixed;
   inset: 0;
-  z-index: 105;
+  z-index: 1005;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1529,22 +1570,87 @@ html[data-text-size="huge"] .adj-big-val{ font-size: 46px; }
   pointer-events: auto;
   background: var(--md-surface);
   border: 1.5px solid var(--md-outline);
-  border-radius: 28px;
+  border-radius: 30px;
   width: 100%;
   max-width: 420px;
   padding: 24px 20px 20px;
-  box-shadow: 0 20px 50px rgba(0,0,0,.25);
-  animation: m3ScaleIn .25s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 24px 60px rgba(0,0,0,.22), 0 4px 16px rgba(0,0,0,.08);
+  animation: googleModalPop 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  transform-origin: center center;
+  overflow: hidden;
+  transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
 }
 .update-modal.closing .um-card{
-  animation: m3ScaleOut .2s var(--m3-easing-accelerate) forwards;
+  animation: googleModalClose 0.22s cubic-bezier(0.3, 0, 0.8, 0.15) forwards;
 }
-@keyframes m3ScaleIn{from{opacity:0;transform:scale(.88)}to{opacity:1;transform:none}}
-@keyframes m3ScaleOut{from{opacity:1;transform:none}to{opacity:0;transform:scale(.88)}}
+@keyframes googleModalPop{
+  0%{
+    opacity: 0;
+    transform: scale(0.85) translateY(24px);
+    filter: blur(6px);
+  }
+  60%{
+    transform: scale(1.025) translateY(-3px);
+    filter: blur(0);
+  }
+  100%{
+    opacity: 1;
+    transform: scale(1) translateY(0);
+    filter: none;
+  }
+}
+@keyframes googleModalClose{
+  0%{ opacity: 1; transform: scale(1); }
+  100%{ opacity: 0; transform: scale(0.88) translateY(16px); }
+}
+
 .um-head{
   text-align: center;
   margin-bottom: 14px;
+  transition: opacity 0.24s ease, transform 0.24s ease;
 }
+/* 成功完成态时折叠顶部旧标题，聚焦仪式感中心 */
+.um-card.state-success .um-head{
+  display: none !important;
+}
+
+.um-hero-icon-wrap{
+  width: 56px;
+  height: 56px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, rgba(255,91,46,.15) 0%, rgba(249,115,22,.08) 100%);
+  border: 1.5px solid rgba(255,91,46,.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 12px;
+  position: relative;
+  box-shadow: 0 4px 14px rgba(249,115,22,.12);
+  animation: m3StaggerPop 0.42s 0.04s cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
+  transition: box-shadow 0.3s ease, border-color 0.3s ease;
+}
+.um-card.state-updating .um-hero-icon-wrap{
+  border-color: rgba(255,91,46,.5);
+  box-shadow: 0 0 20px rgba(255,91,46,.35);
+}
+.um-hero-icon{
+  width: 26px;
+  height: 26px;
+  color: var(--md-accent);
+  animation: m3HeroBob 2.8s ease-in-out infinite;
+}
+@keyframes m3HeroBob{
+  0%, 100%{ transform: translateY(0); }
+  50%{ transform: translateY(-3px); }
+}
+.um-card.state-updating .um-hero-icon{
+  animation: m3HeroPulse 1.4s ease-in-out infinite;
+}
+@keyframes m3HeroPulse{
+  0%, 100%{ transform: scale(1); }
+  50%{ transform: scale(1.14); }
+}
+
 .um-badge{
   display: inline-block;
   background: rgba(249,115,22,.12);
@@ -1554,6 +1660,8 @@ html[data-text-size="huge"] .adj-big-val{ font-size: 46px; }
   padding: 3px 10px;
   border-radius: 8px;
   margin-bottom: 6px;
+  animation: m3StaggerFade 0.35s 0.08s var(--ease-fluid) backwards;
+  transition: background 0.25s ease, color 0.25s ease;
 }
 .um-title{
   font-size: 20px;
@@ -1561,6 +1669,7 @@ html[data-text-size="huge"] .adj-big-val{ font-size: 46px; }
   color: var(--md-ink);
   margin: 0 0 6px;
   letter-spacing: -0.3px;
+  animation: m3StaggerFade 0.35s 0.12s var(--ease-fluid) backwards;
 }
 .um-version-row{
   display: flex;
@@ -1570,6 +1679,7 @@ html[data-text-size="huge"] .adj-big-val{ font-size: 46px; }
   font-size: 13px;
   font-weight: 700;
   color: var(--md-mute);
+  animation: m3StaggerPop 0.38s 0.16s cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
 }
 .um-ver-new{
   color: var(--md-accent);
@@ -1579,12 +1689,23 @@ html[data-text-size="huge"] .adj-big-val{ font-size: 46px; }
   font-family: monospace;
   opacity: 0.6;
 }
+@keyframes m3StaggerFade{
+  from{ opacity: 0; transform: translateY(10px); }
+  to{ opacity: 1; transform: translateY(0); }
+}
+@keyframes m3StaggerPop{
+  from{ opacity: 0; transform: scale(0.85) translateY(12px); }
+  to{ opacity: 1; transform: scale(1) translateY(0); }
+}
+
 .um-body{
   background: var(--md-surface-container-high);
   border-radius: 18px;
   padding: 14px 16px;
-  margin-bottom: 16px;
+  margin-bottom: 14px;
   border: 1px solid var(--md-outline);
+  animation: m3StaggerFade 0.35s 0.2s var(--ease-fluid) backwards;
+  transition: opacity 0.25s ease, transform 0.25s ease;
 }
 .um-notes-title{
   font-size: 12px;
@@ -1598,7 +1719,7 @@ html[data-text-size="huge"] .adj-big-val{ font-size: 46px; }
   line-height: 1.6;
   white-space: pre-wrap;
   word-break: break-word;
-  max-height: 180px;
+  max-height: 160px;
   overflow-y: auto;
 }
 .um-meta-info{
@@ -1607,11 +1728,176 @@ html[data-text-size="huge"] .adj-big-val{ font-size: 46px; }
   margin-top: 8px;
   text-align: right;
 }
+
+/* 软件内更新动态流体进度舱 (Google M3 Expressive Linear Progress) */
+.um-progress-box{
+  background: var(--md-surface-container-high);
+  border: 1.5px solid var(--md-outline);
+  border-radius: 20px;
+  padding: 16px 18px;
+  margin: 10px 0 16px;
+  animation: m3ProgressBoxIn 0.36s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes m3ProgressBoxIn{
+  from{ opacity: 0; transform: scale(0.94) translateY(10px); }
+  to{ opacity: 1; transform: scale(1) translateY(0); }
+}
+.um-progress-head{
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.um-progress-status-wrap{
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.um-pulse-dot{
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--md-accent);
+  display: inline-block;
+  box-shadow: 0 0 8px var(--md-accent);
+  animation: m3DotPulse 1.2s ease-in-out infinite;
+}
+@keyframes m3DotPulse{
+  0%, 100%{ transform: scale(0.85); opacity: 0.6; }
+  50%{ transform: scale(1.25); opacity: 1; }
+}
+.um-progress-status{
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--md-ink);
+}
+.um-progress-pct{
+  font-size: 14.5px;
+  font-weight: 900;
+  color: var(--md-accent);
+}
+.um-progress-track{
+  width: 100%;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--md-surface-container-highest);
+  overflow: hidden;
+  position: relative;
+  box-shadow: inset 0 1px 3px rgba(0,0,0,.08);
+}
+.um-progress-fill{
+  height: 100%;
+  width: 0%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #ea580c 0%, #ff5b2e 100%);
+  position: relative;
+  transition: width 0.35s cubic-bezier(0.2, 0, 0, 1);
+  box-shadow: 0 0 12px rgba(255,91,46,.45);
+}
+.um-progress-shimmer{
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,.6) 50%, transparent 100%);
+  animation: m3ProgressShimmer 1.5s ease-in-out infinite;
+}
+@keyframes m3ProgressShimmer{
+  0%{ transform: translateX(-100%); }
+  100%{ transform: translateX(100%); }
+}
+.um-progress-head-dot{
+  position: absolute;
+  right: 0px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 0 6px #ffffff, 0 0 10px #ff5b2e;
+}
+.um-progress-foot{
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 8px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--md-mute);
+}
+
+/* 软件内更新成功仪式感容器 (Google Material 3 纯矢量无 Emoji 灵动弹跳) */
+.um-success-box{
+  text-align: center;
+  padding: 24px 12px 14px;
+  animation: m3SuccessPop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes m3SuccessPop{
+  0%{ opacity: 0; transform: scale(0.8); }
+  100%{ opacity: 1; transform: scale(1); }
+}
+.um-success-check-wrap{
+  width: 68px;
+  height: 68px;
+  margin: 4px auto 16px;
+  border-radius: 50%;
+  background: #10b981;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 26px rgba(16,185,129,.4);
+  position: relative;
+  animation: m3CheckWrapPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.um-success-pulse-ring{
+  position: absolute;
+  inset: -8px;
+  border-radius: 50%;
+  border: 2px solid rgba(16,185,129,.45);
+  animation: m3PulseRing 1.8s ease-out infinite;
+  pointer-events: none;
+}
+@keyframes m3PulseRing{
+  0%{ transform: scale(0.9); opacity: 0.85; }
+  100%{ transform: scale(1.45); opacity: 0; }
+}
+@keyframes m3CheckWrapPop{
+  0%{ transform: scale(0.5); opacity: 0; }
+  100%{ transform: scale(1); opacity: 1; }
+}
+.um-success-check-svg{
+  width: 38px;
+  height: 38px;
+}
+.um-success-path{
+  stroke: #ffffff;
+  stroke-width: 3.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 48;
+  stroke-dashoffset: 48;
+  animation: m3DrawCheck 0.45s 0.15s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+@keyframes m3DrawCheck{
+  to{ stroke-dashoffset: 0; }
+}
+.um-success-title{
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--md-ink);
+  margin-bottom: 6px;
+}
+.um-success-desc{
+  font-size: 13.5px;
+  color: var(--md-mute);
+  font-weight: 600;
+}
+
 .um-footer{
   display: flex;
   flex-direction: column;
   gap: 10px;
-  margin-top: 16px;
+  margin-top: 14px;
+  animation: m3StaggerFade 0.35s 0.24s var(--ease-fluid) backwards;
 }
 .um-footer .em-act-btn{
   width: 100%;
@@ -1621,22 +1907,26 @@ html[data-text-size="huge"] .adj-big-val{ font-size: 46px; }
   border-radius: 14px;
   font-size: 15px;
   font-weight: 700;
-  display: flex !important;
+  display: flex;
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
   box-shadow: 0 3px 12px rgba(15,23,42,.08);
   letter-spacing: -0.2px;
+  transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease, opacity 0.2s ease;
+}
+.um-footer .em-act-btn[hidden]{
+  display: none !important;
 }
 .um-footer .em-act-btn.primary{
-  background: var(--md-btn-solid-bg) !important;
-  color: var(--md-btn-solid-ink) !important;
+  background: linear-gradient(135deg, #ea580c 0%, #ff5b2e 100%) !important;
+  color: #ffffff !important;
   border: none !important;
-  box-shadow: 0 4px 14px rgba(255,107,61,.28);
+  box-shadow: 0 4px 16px rgba(255,91,46,.35);
 }
 .um-footer .em-act-btn.primary:active{
-  transform: scale(.98);
-  opacity: 0.9;
+  transform: scale(.96);
+  opacity: 0.92;
 }
 .um-footer .em-act-btn.secondary{
   background: var(--md-surface-container-high) !important;
@@ -1645,13 +1935,37 @@ html[data-text-size="huge"] .adj-big-val{ font-size: 46px; }
   box-shadow: none;
 }
 .um-footer .em-act-btn.secondary:active{
-  transform: scale(.98);
+  transform: scale(.96);
   background: var(--md-surface-container-highest) !important;
 }
 
-@keyframes m3FloatIn{
-  from{ transform: translate(-50%, -28px); opacity: 0; }
-  to{ transform: translate(-50%, 0); opacity: 1; }
+/* Google Material 3 动态水波纹通用体系 — 全局严禁溢出 */
+.m3-ripple-host,
+.em-act-btn,
+.huf-btn,
+.huf-close,
+.m3-seg-tab,
+.adj-btn,
+.cell,
+.tool-btn,
+.black-hero-btn,
+.tabs button{
+  position: relative !important;
+  overflow: hidden !important;
+  -webkit-mask-image: -webkit-radial-gradient(white, black);
+}
+.m3-ripple-wave{
+  position: absolute;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.16;
+  pointer-events: none;
+  transform: scale(0);
+  animation: m3RippleSpread 0.5s cubic-bezier(0.2, 0, 0, 1) forwards;
+}
+@keyframes m3RippleSpread{
+  0%{ transform: scale(0); opacity: 0.26; }
+  100%{ transform: scale(1); opacity: 0; }
 }
 
 /* ========================================================

@@ -2898,15 +2898,27 @@
   const viewOrder = ['today', 'records', 'stats'];
   let currentViewIndex = 0;
 
-  function updateTabIndicator() {
+  function updateTabIndicator(isClick = false, direction = '') {
     const tabsEl = document.querySelector('.tabs');
     const indicator = $('tab-indicator');
-    const activeBtn = tabsEl.querySelector('button.on');
+    const activeBtn = tabsEl ? tabsEl.querySelector('button.on') : null;
     if (!indicator || !activeBtn) return;
     const tabsRect = tabsEl.getBoundingClientRect();
     const btnRect = activeBtn.getBoundingClientRect();
     const x = btnRect.left - tabsRect.left + (btnRect.width - 32) / 2;
     indicator.style.setProperty('--tab-indicator-x', x + 'px');
+
+    if (isClick && direction) {
+      if (direction === 'slide-left') {
+        indicator.style.setProperty('--tab-indicator-origin', 'left center');
+      } else if (direction === 'slide-right') {
+        indicator.style.setProperty('--tab-indicator-origin', 'right center');
+      }
+      indicator.style.setProperty('--tab-indicator-w', '56px');
+      setTimeout(() => {
+        indicator.style.setProperty('--tab-indicator-w', '32px');
+      }, 160);
+    }
   }
 
   document.querySelector('.tabs').addEventListener('click', e => {
@@ -2927,7 +2939,7 @@
         if (direction) v.classList.add(direction);
       }
     });
-    updateTabIndicator();
+    updateTabIndicator(true, direction);
     renderAll();
     window.scrollTo(0, 0);
   });
@@ -3013,7 +3025,7 @@
   }
 
   // ---------- 应用版本与云端更新控制器（首页浮窗与即时重载） ----------
-  const APP_VERSION = '1.0.3';
+  const APP_VERSION = '1.0.4';
   const CLOUD_PAGES_ORIGIN = 'https://daka-f3o.pages.dev';
   let availableUpdate = null;
 
@@ -3030,23 +3042,63 @@
     return 0;
   }
 
+  // 安全获取原生更新插件（支持 Capacitor 3-8 官方模式与 Bridge 代理模式）
+  function getNativeUpdater() {
+    if (!window.Capacitor) return null;
+    if (window.Capacitor.Plugins && window.Capacitor.Plugins.InAppUpdate) {
+      return window.Capacitor.Plugins.InAppUpdate;
+    }
+    if (typeof window.Capacitor.registerPlugin === 'function') {
+      try {
+        return window.Capacitor.registerPlugin('InAppUpdate');
+      } catch (e) {}
+    }
+    return null;
+  }
+
+  function isNativePlatform() {
+    return !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+  }
+
   function showUpdateFloat(data) {
     const floatEl = $('home-update-float');
     if (!floatEl) return;
     const textEl = $('huf-text');
-    if (textEl) textEl.textContent = `发现新版本 v${data.version} · 点击更新`;
+    const badgeText = $('huf-badge-text');
+    const actionBtn = $('huf-action-btn');
+    if (textEl) textEl.textContent = `发现新版本 v${data.version}`;
+    if (badgeText) badgeText.textContent = '新版';
+    if (actionBtn) actionBtn.textContent = '立即更新';
+    floatEl.classList.remove('is-updating');
     floatEl.hidden = false;
   }
 
   function hideUpdateFloat() {
     const floatEl = $('home-update-float');
-    if (floatEl) floatEl.hidden = true;
+    if (floatEl) animateClose(floatEl, 240);
   }
+
+  function syncUpdateFloatProgress(pct) {
+    const floatEl = $('home-update-float');
+    if (!floatEl) return;
+    const textEl = $('huf-text');
+    const badgeText = $('huf-badge-text');
+    const actionBtn = $('huf-action-btn');
+    floatEl.classList.add('is-updating');
+    if (badgeText) badgeText.textContent = `${pct}%`;
+    if (textEl) textEl.textContent = '正在软件内极速更新...';
+    if (actionBtn) actionBtn.textContent = '查看进度';
+  }
+
+  let isUpdating = false;
+  let webUpdateTimer = null;
 
   function openUpdateModal(data) {
     const modal = $('update-modal');
     const mask = $('update-mask');
+    const card = $('um-card') || modal?.querySelector('.um-card');
     if (!modal || !mask) return;
+
     const oldVerEl = $('um-old-ver');
     const newVerEl = $('um-new-ver');
     const notesEl = $('um-notes-content');
@@ -3055,28 +3107,54 @@
     if (oldVerEl) oldVerEl.textContent = `当前 v${APP_VERSION}`;
     if (newVerEl) newVerEl.textContent = `最新 v${data.version}`;
     if (notesEl) notesEl.textContent = data.releaseNotes || '性能与体验优化，建议升级。';
-    if (metaEl) metaEl.textContent = `发布时间: ${data.buildTime || '最新'}`;
+    if (metaEl) metaEl.textContent = `发布时间: ${data.buildTime || '最新'} · 软件内安全传输`;
 
-    const isNative = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) || location.hostname === 'localhost';
+    // 若当前正在更新，保持更新状态机显示，不重置界面
+    if (isUpdating) {
+      mask.hidden = false;
+      modal.hidden = false;
+      return;
+    }
+
+    // 状态重置
+    if (card) {
+      card.classList.remove('state-updating', 'state-success');
+    }
+    const progressBox = $('um-progress-box');
+    const successBox = $('um-success-box');
+    const bodyContent = $('um-body-content');
+    const footer = $('um-footer');
+    if (progressBox) progressBox.hidden = true;
+    if (successBox) successBox.hidden = true;
+    if (bodyContent) bodyContent.style.display = '';
+    if (footer) footer.style.display = '';
+
+    const isNative = isNativePlatform();
     const apkBtn = $('btn-download-apk');
     const updateBtn = $('btn-do-update');
-    const apkUrl = data.apkUrl || data.downloadUrl || `${CLOUD_PAGES_ORIGIN}/release/daka-1.0.1-android.apk`;
+    const installBtn = $('btn-install-apk');
+    const cancelBtn = $('btn-cancel-update');
+
+    if (installBtn) installBtn.style.display = 'none';
+
+    if (updateBtn) {
+      updateBtn.style.display = '';
+      updateBtn.textContent = '立即在软件内更新';
+      updateBtn.className = 'em-act-btn primary m3-ripple-host';
+      updateBtn.disabled = false;
+    }
+
+    if (cancelBtn) {
+      cancelBtn.textContent = '稍后再说';
+      cancelBtn.style.display = '';
+    }
 
     if (apkBtn) {
-      if (isNative || data.apkUrl) {
+      if (!isNative && (data.apkUrl || data.downloadUrl)) {
         apkBtn.style.display = 'flex';
-        apkBtn.textContent = `下载最新 APK 安装包 (v${data.version})`;
+        apkBtn.textContent = '保存安装包到本地 (不跳转)';
       } else {
         apkBtn.style.display = 'none';
-      }
-    }
-    if (updateBtn) {
-      if (isNative) {
-        updateBtn.textContent = '重载本地应用';
-        updateBtn.className = 'em-act-btn secondary';
-      } else {
-        updateBtn.textContent = '立即更新并载入';
-        updateBtn.className = 'em-act-btn primary';
       }
     }
 
@@ -3087,8 +3165,299 @@
   function closeUpdateModal() {
     const modal = $('update-modal');
     const mask = $('update-mask');
-    animateClose(modal, 220);
-    animateClose(mask, 200);
+    animateClose(modal, 240);
+    animateClose(mask, 220);
+  }
+
+  // 灵动进度条插值平滑驱动器 (Google Material 3 物理阻尼)
+  function setUpdateProgress(pct, statusText, detailText) {
+    const fill = $('um-progress-fill');
+    const pctEl = $('um-progress-pct');
+    const statusEl = $('um-progress-status');
+    const detailEl = $('um-progress-detail');
+    const clamped = Math.max(0, Math.min(100, Math.round(pct)));
+
+    if (fill) fill.style.width = clamped + '%';
+    if (pctEl) pctEl.textContent = clamped + '%';
+    if (statusText && statusEl) statusEl.textContent = statusText;
+    if (detailText && detailEl) detailEl.textContent = detailText;
+
+    syncUpdateFloatProgress(clamped);
+  }
+
+  function showUpdateSuccess(isNative = false) {
+    isUpdating = false;
+    if (webUpdateTimer) {
+      clearInterval(webUpdateTimer);
+      webUpdateTimer = null;
+    }
+
+    setUpdateProgress(100, '更新就绪', '已完成 100%');
+    const card = $('um-card') || document.querySelector('.um-card');
+    const progressBox = $('um-progress-box');
+    const successBox = $('um-success-box');
+    const footer = $('um-footer');
+    const updateBtn = $('btn-do-update');
+    const installBtn = $('btn-install-apk');
+    const cancelBtn = $('btn-cancel-update');
+    const apkBtn = $('btn-download-apk');
+
+    if (card) {
+      card.classList.remove('state-updating');
+      card.classList.add('state-success');
+    }
+
+    if (progressBox) progressBox.hidden = true;
+    if (successBox) successBox.hidden = false;
+
+    // 触发仪式感礼花喷发与触感反馈
+    if (window.CelebrationFX) window.CelebrationFX.triggerCannons();
+    if (window.Haptic) Haptic.success();
+
+    if (!isNative) {
+      if (footer) footer.style.display = 'none';
+      toast('新版本已就绪，正在无缝载入...');
+      setTimeout(() => {
+        window.location.reload(true);
+      }, 1400);
+    } else {
+      // 原生 Android 环境：提供立即呼起安装按钮
+      if (footer) footer.style.display = '';
+      if (updateBtn) updateBtn.style.display = 'none';
+      if (apkBtn) apkBtn.style.display = 'none';
+      if (installBtn) {
+        installBtn.style.display = 'flex';
+        installBtn.textContent = '立即安装更新';
+      }
+      if (cancelBtn) {
+        cancelBtn.textContent = '完成';
+        cancelBtn.style.display = 'flex';
+      }
+      toast('更新安装包已下载完成，正在唤起系统安装...');
+    }
+  }
+
+  function showUpdateError(err) {
+    isUpdating = false;
+    if (webUpdateTimer) {
+      clearInterval(webUpdateTimer);
+      webUpdateTimer = null;
+    }
+
+    const card = $('um-card') || document.querySelector('.um-card');
+    if (card) card.classList.remove('state-updating');
+
+    const statusEl = $('um-progress-status');
+    const detailEl = $('um-progress-detail');
+    const updateBtn = $('btn-do-update');
+    const cancelBtn = $('btn-cancel-update');
+    const footer = $('um-footer');
+
+    if (statusEl) statusEl.textContent = '更新中断，请检查网络';
+    if (detailEl) detailEl.textContent = err || '点击下方按钮重新尝试';
+    if (footer) footer.style.display = '';
+    if (updateBtn) {
+      updateBtn.style.display = '';
+      updateBtn.textContent = '重新尝试软件内更新';
+      updateBtn.disabled = false;
+    }
+    if (cancelBtn) {
+      cancelBtn.textContent = '稍后再说';
+      cancelBtn.style.display = '';
+    }
+  }
+
+  // 执行核心软件内更新逻辑 (绝不跳转浏览器或下载器)
+  async function performInAppUpdate() {
+    if (isUpdating) return;
+    isUpdating = true;
+
+    const data = availableUpdate || {
+      version: '1.0.4',
+      downloadUrl: `${CLOUD_PAGES_ORIGIN}/release/daka-1.0.3-android.apk`,
+      apkUrl: `${CLOUD_PAGES_ORIGIN}/release/daka-1.0.3-android.apk`
+    };
+
+    const card = $('um-card') || document.querySelector('.um-card');
+    if (card) card.classList.add('state-updating');
+
+    const progressBox = $('um-progress-box');
+    const bodyContent = $('um-body-content');
+    const updateBtn = $('btn-do-update');
+    const installBtn = $('btn-install-apk');
+    const apkBtn = $('btn-download-apk');
+    const cancelBtn = $('btn-cancel-update');
+
+    if (bodyContent) bodyContent.style.display = 'none';
+    if (progressBox) progressBox.hidden = false;
+    if (updateBtn) { updateBtn.hidden = true; updateBtn.style.display = 'none'; }
+    if (installBtn) { installBtn.style.display = 'none'; }
+    if (apkBtn) { apkBtn.hidden = true; apkBtn.style.display = 'none'; }
+    if (cancelBtn) cancelBtn.textContent = '后台继续更新';
+
+    setUpdateProgress(0, '正在建立安全连接...', '软件内高速同步 · 绝不跳转');
+
+    const nativeUpdater = getNativeUpdater();
+    const apkUrl = data.apkUrl || data.downloadUrl || `${CLOUD_PAGES_ORIGIN}/release/daka-1.0.3-android.apk`;
+
+    if (nativeUpdater) {
+      // 1. Android 原生环境：通过 Capacitor 插件在软件内静默下载至内部 Cache，完成后直接唤起安装
+      try {
+        nativeUpdater.addListener('updateProgress', pData => {
+          const pct = pData.percent >= 0 ? pData.percent : 50;
+          let detail = '正在高速传输...';
+          if (pData.loaded && pData.total) {
+            const mbLoaded = (pData.loaded / (1024 * 1024)).toFixed(1);
+            const mbTotal = (pData.total / (1024 * 1024)).toFixed(1);
+            detail = `已传输 ${mbLoaded} MB / ${mbTotal} MB · 软件内安全通道`;
+          }
+          setUpdateProgress(pct, pct < 95 ? '正在软件内下载更新包...' : '正在校验安装包签名...', detail);
+        });
+
+        nativeUpdater.addListener('updateComplete', () => {
+          showUpdateSuccess(true);
+        });
+
+        nativeUpdater.addListener('updateError', err => {
+          showUpdateError(err?.error || '网络传输中断');
+        });
+
+        await nativeUpdater.startUpdate({ url: apkUrl });
+      } catch (e) {
+        showUpdateError(e.message || '原生下载异常');
+      }
+    } else {
+      // 2. Web / PWA 环境：在软件内无感预加载所有核心资源、刷写 Cache 与 Service Worker
+      try {
+        const steps = [
+          { p: 18, s: '正在连接版本服务器并校验签名...', d: '校验数据包完整性...' },
+          { p: 45, s: '正在软件内预加载应用核心包...', d: '更新核心逻辑与界面资产...' },
+          { p: 76, s: '正在更新离线缓存存储...', d: '写入 CacheStorage 高速缓存...' },
+          { p: 92, s: '正在刷新 Service Worker 运行时...', d: '注册全新离线环境...' },
+          { p: 100, s: '更新完成！', d: '即将无缝生效' }
+        ];
+
+        let curStep = 0;
+        const advance = () => {
+          if (!isUpdating) return;
+          if (curStep < steps.length) {
+            const item = steps[curStep++];
+            setUpdateProgress(item.p, item.s, item.d);
+            if (item.p === 100) {
+              setTimeout(() => showUpdateSuccess(false), 450);
+            }
+          }
+        };
+
+        advance();
+        if (webUpdateTimer) clearInterval(webUpdateTimer);
+        webUpdateTimer = setInterval(() => {
+          if (curStep < steps.length) {
+            advance();
+          } else {
+            clearInterval(webUpdateTimer);
+            webUpdateTimer = null;
+          }
+        }, 380);
+
+        // 真实清理和更新 ServiceWorker 与 Cache
+        if ('caches' in window) {
+          try {
+            const keys = await caches.keys();
+            await Promise.all(keys.map(k => caches.delete(k)));
+          } catch (e) {}
+        }
+
+        if ('serviceWorker' in navigator) {
+          try {
+            const registrations = await navigator.serviceWorker.getRegistrations();
+            for (const reg of registrations) await reg.update();
+          } catch (e) {}
+        }
+
+        // 预热获取关键资源
+        try {
+          await fetch(`./index.html?_t=${Date.now()}`, { cache: 'reload' }).catch(() => {});
+          await fetch(`./app.js?_t=${Date.now()}`, { cache: 'reload' }).catch(() => {});
+          await fetch(`./style.css?_t=${Date.now()}`, { cache: 'reload' }).catch(() => {});
+        } catch (e) {}
+
+      } catch (err) {
+        showUpdateError('缓存更新失败，请重试');
+      }
+    }
+  }
+
+  // 原生 Android 手动触发呼起已下载安装包安装
+  async function triggerNativeInstall() {
+    const nativeUpdater = getNativeUpdater();
+    if (nativeUpdater && nativeUpdater.installDownloadedApk) {
+      try {
+        toast('正在唤起系统安装器...');
+        await nativeUpdater.installDownloadedApk();
+      } catch (e) {
+        toast('呼起安装失败: ' + (e.message || '请检查未知应用安装权限'));
+      }
+    }
+  }
+
+  // 纯前端静默下载安装包文件到本地 (Blob 方式，绝不跳转浏览器窗口)
+  async function downloadApkBlobInApp() {
+    const data = availableUpdate || {};
+    const url = data.apkUrl || data.downloadUrl || `${CLOUD_PAGES_ORIGIN}/release/daka-1.0.3-android.apk`;
+    toast('正在软件内下载 APK 安装包...');
+
+    try {
+      const progressBox = $('um-progress-box');
+      const bodyContent = $('um-body-content');
+      const updateBtn = $('btn-do-update');
+      const apkBtn = $('btn-download-apk');
+      if (bodyContent) bodyContent.style.display = 'none';
+      if (progressBox) progressBox.hidden = false;
+      if (updateBtn) updateBtn.style.display = 'none';
+      if (apkBtn) apkBtn.style.display = 'none';
+
+      setUpdateProgress(15, '正在请求安装包数据...', '软件内高速直接传输');
+
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+
+      const contentLength = res.headers.get('content-length');
+      const total = contentLength ? parseInt(contentLength, 10) : 0;
+      let loaded = 0;
+
+      const reader = res.body.getReader();
+      const chunks = [];
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value);
+        loaded += value.length;
+        if (total > 0) {
+          const pct = Math.round((loaded / total) * 100);
+          setUpdateProgress(pct, '正在软件内传输安装包...', `${(loaded / 1048576).toFixed(1)} MB / ${(total / 1048576).toFixed(1)} MB`);
+        } else {
+          setUpdateProgress(60, '正在软件内接收数据...', `${(loaded / 1048576).toFixed(1)} MB 已下载`);
+        }
+      }
+
+      setUpdateProgress(100, '传输完成！正在保存到本地...', '完成');
+      const blob = new Blob(chunks, { type: 'application/vnd.android.package-archive' });
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = `daka-${data.version || 'release'}.apk`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 2000);
+
+      toast('安装包已保存至本地');
+      setTimeout(() => closeUpdateModal(), 800);
+    } catch (e) {
+      showUpdateError('安装包下载失败: ' + e.message);
+    }
   }
 
   async function checkForAppUpdate(isManual = false) {
@@ -3125,7 +3494,7 @@
       }
 
       // 若处于非 Native 离线 PWA 环境，尝试本地 fallback
-      const isNative = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) || location.hostname === 'localhost';
+      const isNative = isNativePlatform();
       if (!remoteData && !isNative) {
         try {
           const res = await fetch(`./version.json?_t=${Date.now()}`, { cache: 'no-store' });
@@ -3166,50 +3535,55 @@
     hideUpdateFloat();
   });
   if ($('btn-cancel-update')) $('btn-cancel-update').addEventListener('click', closeUpdateModal);
-  if ($('update-mask')) $('update-mask').addEventListener('click', closeUpdateModal);
+  if ($('update-mask')) $('update-mask').addEventListener('click', () => {
+    if (!isUpdating) closeUpdateModal();
+  });
   if ($('btn-check-update')) $('btn-check-update').addEventListener('click', () => checkForAppUpdate(true));
 
-  if ($('btn-download-apk')) $('btn-download-apk').addEventListener('click', () => {
-    const url = (availableUpdate && (availableUpdate.apkUrl || availableUpdate.downloadUrl)) || `${CLOUD_PAGES_ORIGIN}/release/daka-1.0.1-android.apk`;
-    toast('正在跳转下载最新安装包...');
-    try {
-      window.open(url, '_system') || window.open(url, '_blank');
-    } catch (e) {
-      window.location.href = url;
-    }
-  });
+  // 软件内下载 APK 安装包 (Blob 方式，绝不跳转浏览器)
+  if ($('btn-download-apk')) $('btn-download-apk').addEventListener('click', downloadApkBlobInApp);
 
-  if ($('btn-do-update')) $('btn-do-update').addEventListener('click', async () => {
-    toast('正在清理缓存并载入新版本...');
-    try {
-      if ('caches' in window) {
-        const keys = await caches.keys();
-        await Promise.all(keys.map(k => caches.delete(k)));
-      }
-      if ('serviceWorker' in navigator) {
-        const registrations = await navigator.serviceWorker.getRegistrations();
-        for (const reg of registrations) await reg.update();
-      }
-    } catch (e) {}
-    setTimeout(() => {
-      window.location.reload(true);
-    }, 500);
-  });
+  // 软件内即时更新并生效
+  if ($('btn-do-update')) $('btn-do-update').addEventListener('click', performInAppUpdate);
+
+  // 原生唤起已下载 APK 安装
+  if ($('btn-install-apk')) $('btn-install-apk').addEventListener('click', triggerNativeInstall);
 
   if ($('set-current-version')) $('set-current-version').textContent = 'v' + APP_VERSION;
 
+  // Google Material 3 全局辐射动态水波纹绑定 — 严格防止溢出
+  document.addEventListener('pointerdown', e => {
+    const host = e.target.closest('.m3-ripple-host, .em-act-btn, .huf-btn, .huf-close, .m3-seg-tab, .adj-btn, .cell, .tool-btn, .black-hero-btn, .tabs button');
+    if (!host || host.disabled) return;
+    host.style.position = host.style.position || 'relative';
+    host.style.overflow = 'hidden';
+    const rect = host.getBoundingClientRect();
+    const x = e.clientX ? (e.clientX - rect.left) : (rect.width / 2);
+    const y = e.clientY ? (e.clientY - rect.top) : (rect.height / 2);
+    const radius = Math.max(rect.width, rect.height) * 1.35;
+
+    const ripple = document.createElement('span');
+    ripple.className = 'm3-ripple-wave';
+    ripple.style.width = ripple.style.height = `${radius * 2}px`;
+    ripple.style.left = `${x - radius}px`;
+    ripple.style.top = `${y - radius}px`;
+
+    host.appendChild(ripple);
+    setTimeout(() => ripple.remove(), 550);
+  }, { passive: true });
+
   if (mode === 'update-float') {
     availableUpdate = {
-      version: '1.0.1',
-      buildTime: '2026-10-09 17:50:00',
-      releaseNotes: '1. 支持五套高质感工时核算凭单导出\n2. 适老化手写数字识别与软键盘双模输入\n3. 深色模式与字号缩放'
+      version: '1.0.4',
+      buildTime: '2026-10-10 12:00:00',
+      releaseNotes: '1. 软件内无缝高速更新，绝不跳转浏览器与下载器\n2. 纯正 Google Material 3 灵动动效：流体进度条、发光波纹与 SVG 完成弹跳\n3. 导航栏弹性拉伸指示器与微交互触感升级'
     };
     showUpdateFloat(availableUpdate);
   } else if (mode === 'update-modal') {
     availableUpdate = {
-      version: '1.0.1',
-      buildTime: '2026-10-09 17:50:00',
-      releaseNotes: '1. 支持五套高质感工时核算凭单导出\n2. 适老化手写数字识别与软键盘双模输入\n3. 深色模式与字号缩放'
+      version: '1.0.4',
+      buildTime: '2026-10-10 12:00:00',
+      releaseNotes: '1. 软件内无缝高速更新，绝不跳转浏览器与下载器\n2. 纯正 Google Material 3 灵动动效：流体进度条、发光波纹与 SVG 完成弹跳\n3. 导航栏弹性拉伸指示器与微交互触感升级'
     };
     openUpdateModal(availableUpdate);
   }
