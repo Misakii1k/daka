@@ -1,7 +1,7 @@
 # 工时打卡 (Daka Worklog)
 
 <p align="center">
-  <img src="./assets/readme/hero.svg" alt="工时打卡系统 Daka Worklog Banner" width="100%">
+  <img src="./assets/readme/hero.svg" alt="工时打卡 Daka Worklog Banner" width="100%">
 </p>
 
 <p align="center">
