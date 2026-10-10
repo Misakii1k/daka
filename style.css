@@ -1179,39 +1179,54 @@ html[data-theme="dark"] .em-act-btn.secondary{background:var(--md-surface-contai
 .settings-row:last-child{border-bottom:none}
 .settings-row .row-right{display:flex;align-items:center;gap:8px}
 .settings-row .row-input-wrap{
-  position: relative;
   width: 140px;
   height: 38px;
-  display: flex;
-  align-items: center;
-}
-.settings-row .row-input-wrap input{
-  width: 100%;
-  height: 100%;
   border-radius: 12px;
   border: 1.5px solid var(--md-outline);
   background: var(--md-surface-container-high);
-  color: var(--md-ink);
-  font-size: 14px;
-  font-weight: 700;
-  padding: 0 46px 0 10px;
-  text-align: right;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0 8px 0 6px;
   box-sizing: border-box;
   transition: border-color .2s ease, box-shadow .2s ease;
 }
-.settings-row .row-input-wrap input:focus{
+.settings-row .row-input-wrap:focus-within{
   border-color: var(--md-accent);
   box-shadow: 0 0 0 3px rgba(255,107,61,.18);
-  outline: none;
+}
+.settings-row .row-input-wrap input{
+  flex: 1;
+  min-width: 0;
+  width: 100% !important;
+  height: 100% !important;
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  outline: none !important;
+  padding: 0 3px 0 0 !important;
+  text-align: right !important;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--md-ink) !important;
+  box-sizing: border-box;
+  -moz-appearance: textfield;
+}
+.settings-row .row-input-wrap input::-webkit-outer-spin-button,
+.settings-row .row-input-wrap input::-webkit-inner-spin-button{
+  -webkit-appearance: none;
+  margin: 0;
 }
 .settings-row .row-input-wrap .row-unit{
-  position: absolute;
-  right: 10px;
-  font-size: 12px;
+  position: static !important;
+  flex-shrink: 0;
+  font-size: 11.5px;
   font-weight: 700;
   color: var(--md-mute);
-  pointer-events: none;
+  margin-left: 2px;
   user-select: none;
+  pointer-events: none;
+  white-space: nowrap;
 }
 .settings-row .m3-picker-trigger{
   width: 140px;
@@ -1266,7 +1281,16 @@ html[data-theme="dark"] .storage-form-row input,
 html[data-theme="dark"] .em-input-wrap input,
 html[data-theme="dark"] .em-input-wrap select{
   background: var(--md-surface-container-high) !important;
+  color: #f8fafc !important;
+}
+html[data-theme="dark"] .settings-row .row-input-wrap{
+  background: var(--md-surface-container-high) !important;
   border-color: var(--md-outline) !important;
+}
+html[data-theme="dark"] .settings-row .row-input-wrap input{
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
   color: #f8fafc !important;
 }
 html[data-theme="dark"] .storage-seg-tabs{
