@@ -512,19 +512,41 @@
   $('set-lunch').value = settings.lunch;
   $('set-std').value = settings.std;
 
-  // 1. 主题分段胶囊切换器 (Segmented Tabs·平滑弹性滑块)
+  // 1. 主题分段胶囊切换器 (Segmented Tabs·像素级自适应贴合滑块)
   function updateThemeSegUI(mode) {
+    const tabsContainer = $('theme-seg-tabs');
     const tabs = document.querySelectorAll('#theme-seg-tabs .m3-seg-tab');
     const indicator = $('theme-seg-indicator');
     const modes = ['system', 'light', 'dark'];
     const idx = modes.indexOf(mode);
+    const targetIdx = idx !== -1 ? idx : 0;
+
     tabs.forEach((tab, i) => {
-      tab.classList.toggle('on', i === (idx !== -1 ? idx : 0));
+      tab.classList.toggle('on', i === targetIdx);
     });
-    if (indicator && idx !== -1) {
-      indicator.style.transform = `translateX(${idx * 100}%)`;
+
+    if (indicator && tabsContainer && tabs[targetIdx]) {
+      const activeTab = tabs[targetIdx];
+      const left = activeTab.offsetLeft;
+      const top = activeTab.offsetTop;
+      const width = activeTab.offsetWidth;
+      const height = activeTab.offsetHeight;
+      if (width > 0 && height > 0) {
+        indicator.style.width = `${width}px`;
+        indicator.style.height = `${height}px`;
+        indicator.style.top = `${top}px`;
+        indicator.style.left = '0px';
+        indicator.style.transform = `translateX(${left}px)`;
+      } else {
+        indicator.style.width = 'calc((100% - 14px) / 3)';
+        indicator.style.transform = `translateX(calc(${targetIdx} * (100% + 4px)))`;
+      }
     }
   }
+
+  window.addEventListener('resize', () => {
+    updateThemeSegUI(settings.themeMode || 'system');
+  });
 
   const themeSegTabs = $('theme-seg-tabs');
   if (themeSegTabs) {
@@ -540,7 +562,8 @@
         toast('已切换主题');
       });
     });
-    updateThemeSegUI(settings.themeMode || 'system');
+    // 延迟与初始确保布局计算就绪
+    requestAnimationFrame(() => updateThemeSegUI(settings.themeMode || 'system'));
   }
 
   if ($('set-theme')) {
@@ -1014,60 +1037,194 @@
   // 初始化存储分段
   switchStorageMode(settings.storageMode || 'local');
 
-  // Cloudflare 云端数据库同步服务
+  // Cloudflare 云端数据库同步服务 (D1 极简免配置架构)
+  function ensureCloudUserId() {
+    if (!settings.cloudUserId || !settings.cloudUserId.trim()) {
+      const rand = Math.random().toString(36).substring(2, 6);
+      settings.cloudUserId = `dk-${rand}`;
+      saveSet();
+    }
+    return settings.cloudUserId;
+  }
+
+  function getCloudSyncUrl() {
+    const isNative = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) 
+      || location.hostname === 'localhost' 
+      || location.protocol === 'file:'
+      || !location.origin.includes('pages.dev');
+    return isNative ? `${CLOUD_PAGES_ORIGIN}/api/sync` : '/api/sync';
+  }
+
   if ($('set-user-id')) {
-    $('set-user-id').value = settings.cloudUserId || '';
+    $('set-user-id').value = ensureCloudUserId();
     $('set-user-id').addEventListener('change', e => {
-      settings.cloudUserId = e.target.value.trim();
+      let val = e.target.value.trim();
+      if (!val) val = ensureCloudUserId();
+      settings.cloudUserId = val;
+      e.target.value = val;
       saveSet();
       Haptic.tick();
     });
   }
 
-  async function pushToCloudflare(silent = false) {
+  if ($('btn-copy-cloud-id')) {
+    $('btn-copy-cloud-id').addEventListener('click', async () => {
+      const code = ensureCloudUserId();
+      try {
+        await navigator.clipboard.writeText(code);
+        Haptic.success();
+        toast(`已复制同步码：${code}，在其他设备填入即可`);
+      } catch {
+        toast(`专属同步码：${code}`);
+      }
+    });
+  }
+
+  if ($('btn-gen-cloud-id')) {
+    $('btn-gen-cloud-id').addEventListener('click', () => {
+      const rand = Math.random().toString(36).substring(2, 6);
+      settings.cloudUserId = `dk-${rand}`;
+      if ($('set-user-id')) $('set-user-id').value = settings.cloudUserId;
+      saveSet();
+      Haptic.tick();
+      toast(`已生成新同步码：${settings.cloudUserId}`);
+    });
+  }
+
+  if ($('set-auto-cloud-sync')) {
+    $('set-auto-cloud-sync').checked = settings.autoCloudSync !== false;
+    $('set-auto-cloud-sync').addEventListener('change', e => {
+      settings.autoCloudSync = e.target.checked;
+      saveSet();
+      Haptic.tap();
+      toast(settings.autoCloudSync ? '已开启打卡自动同步' : '已关闭打卡自动同步');
+    });
+  }
+
+  // 极简一键双向智能合并同步
+  async function syncCloudflareBidirectional(silent = false) {
     const statusEl = $('cloud-sync-status');
-    if (statusEl) statusEl.textContent = '正在同步至云端...';
+    const userId = ensureCloudUserId();
+    const url = getCloudSyncUrl();
+    if (statusEl) statusEl.textContent = '正在连接云端双向同步...';
     try {
-      const res = await fetch('/api/sync', {
+      // 1. 获取云端已有打卡记录与设置
+      let cloudLog = {};
+      try {
+        const getRes = await fetch(url, {
+          headers: { 'X-User-Id': userId }
+        });
+        if (getRes.ok) {
+          const getData = await getRes.json();
+          if (getData && getData.ok && getData.log) {
+            cloudLog = getData.log;
+          }
+        }
+      } catch (e) {
+        console.warn('读取云端数据降级:', e);
+      }
+
+      // 2. 双向智能合并：最新 updatedAt 为准
+      const mergedLog = Object.assign({}, log);
+      let mergedCount = 0;
+      for (const [d, cRec] of Object.entries(cloudLog)) {
+        if (!mergedLog[d]) {
+          mergedLog[d] = cRec;
+          mergedCount++;
+        } else {
+          const localTime = mergedLog[d].updatedAt || 0;
+          const cloudTime = (cRec && cRec.updatedAt) || 0;
+          if (cloudTime > localTime) {
+            mergedLog[d] = cRec;
+            mergedCount++;
+          }
+        }
+      }
+      log = mergedLog;
+      saveLog();
+      renderAll();
+
+      // 3. 将合并后的完整数据回写到 D1 云端
+      const postRes = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-User-Id': settings.cloudUserId || 'default_user'
+          'X-User-Id': userId
+        },
+        body: JSON.stringify({ log: mergedLog, settings })
+      });
+      if (postRes.ok) {
+        const postData = await postRes.json();
+        if (postData && postData.ok) {
+          const total = Object.keys(mergedLog).length;
+          const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          if (statusEl) statusEl.textContent = `云端已同步 · 共 ${total} 条记录 · ${timeStr}`;
+          if (!silent) {
+            Haptic.success();
+            toast(`智能双向同步完成 · 云端共 ${total} 条记录`);
+          }
+          return true;
+        }
+      }
+      if (statusEl) statusEl.textContent = '本地优先 · 离线已安全保存';
+      if (!silent) toast('已保存在本地，网络恢复后自动同步');
+      return false;
+    } catch (err) {
+      if (statusEl) statusEl.textContent = '本地优先 · 离线已安全保存';
+      if (!silent) toast('已保存在本地，网络恢复后自动同步');
+      return false;
+    }
+  }
+
+  async function pushToCloudflare(silent = false) {
+    const statusEl = $('cloud-sync-status');
+    const userId = ensureCloudUserId();
+    const url = getCloudSyncUrl();
+    if (statusEl) statusEl.textContent = '正在备份至云端...';
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-Id': userId
         },
         body: JSON.stringify({ log, settings })
       });
       if (res.ok) {
         const data = await res.json();
-        if (data.ok) {
+        if (data && data.ok) {
           const count = Object.keys(log).length;
-          if (statusEl) statusEl.textContent = `云端已同步 · 共 ${count} 条记录`;
+          const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          if (statusEl) statusEl.textContent = `云端已备份 · 共 ${count} 条记录 · ${timeStr}`;
           if (!silent) {
             Haptic.success();
-            toast(`已同步 ${count} 条记录到 Cloudflare`);
+            toast(`已备份 ${count} 条记录到 Cloudflare`);
           }
           return true;
         }
       }
       if (statusEl) statusEl.textContent = '本地优先 · 离线已保存';
-      if (!silent) toast('已保存在本地；部署 Cloudflare 后自动同步');
+      if (!silent) toast('已保存在本地');
       return false;
     } catch {
       if (statusEl) statusEl.textContent = '本地优先 · 离线已保存';
-      if (!silent) toast('已保存在本地；部署 Cloudflare 后自动同步');
+      if (!silent) toast('已保存在本地');
       return false;
     }
   }
 
   async function pullFromCloudflare() {
     const statusEl = $('cloud-sync-status');
+    const userId = ensureCloudUserId();
+    const url = getCloudSyncUrl();
     if (statusEl) statusEl.textContent = '正在从云端读取...';
     try {
-      const res = await fetch('/api/sync', {
-        headers: { 'X-User-Id': settings.cloudUserId || 'default_user' }
+      const res = await fetch(url, {
+        headers: { 'X-User-Id': userId }
       });
       if (res.ok) {
         const data = await res.json();
-        if (data.ok && data.log) {
+        if (data && data.ok && data.log) {
           const cloudKeys = Object.keys(data.log);
           if (cloudKeys.length > 0) {
             log = Object.assign({}, log, data.log);
@@ -1088,6 +1245,7 @@
     }
   }
 
+  if ($('btn-cloud-sync-onekey')) $('btn-cloud-sync-onekey').addEventListener('click', () => syncCloudflareBidirectional(false));
   if ($('btn-cloud-push')) $('btn-cloud-push').addEventListener('click', () => pushToCloudflare(false));
   if ($('btn-cloud-pull')) $('btn-cloud-pull').addEventListener('click', () => pullFromCloudflare());
 
@@ -1223,8 +1381,8 @@
 
   // 通用同步分发器（打卡后自动根据当前存储模式同步）
   function autoSyncByStorageMode() {
-    if (settings.storageMode === 'cloudflare') {
-      pushToCloudflare(true);
+    if (settings.autoCloudSync !== false && (settings.storageMode === 'cloudflare' || settings.cloudUserId)) {
+      syncCloudflareBidirectional(true);
     } else if (settings.storageMode === 'webdav' && settings.webdav && settings.webdav.url) {
       pushToWebDAV(true);
     }
@@ -2855,7 +3013,7 @@
   }
 
   // ---------- 应用版本与云端更新控制器（首页浮窗与即时重载） ----------
-  const APP_VERSION = '1.0.1';
+  const APP_VERSION = '1.0.3';
   const CLOUD_PAGES_ORIGIN = 'https://daka-f3o.pages.dev';
   let availableUpdate = null;
 
@@ -2906,7 +3064,7 @@
 
     if (apkBtn) {
       if (isNative || data.apkUrl) {
-        apkBtn.style.display = 'block';
+        apkBtn.style.display = 'flex';
         apkBtn.textContent = `下载最新 APK 安装包 (v${data.version})`;
       } else {
         apkBtn.style.display = 'none';
