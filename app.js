@@ -303,7 +303,7 @@
           } else if (actionId === 'snooze_10') {
             handleNotificationSnooze(remindType);
           } else if (actionId === 'tap') {
-            toast(remindType === 'in' ? '请记录今日上班工时' : '请记录今日下班工时');
+            toast(remindType === 'in' ? '今日上班打卡提醒' : '今日下班打卡提醒');
           }
         });
       }
@@ -328,7 +328,7 @@
       saveLog();
       Haptic.success();
       renderAll();
-      toast(`已完成今日上班打卡: ${nowTime}`);
+      toast(`已打卡上班：${nowTime}`);
     } else {
       r.out = nowTime;
       if (!r.in) {
@@ -338,7 +338,7 @@
       saveLog();
       Haptic.success();
       renderAll();
-      toast(`已完成今日下班打卡: ${nowTime}`);
+      toast(`已打卡下班：${nowTime}`);
     }
 
     if (typeof autoSyncByStorageMode === 'function') {
@@ -360,8 +360,8 @@
         notifications: [
           {
             id: snoozeId,
-            title: type === 'in' ? '上班打卡延时提醒' : '下班打卡延时提醒',
-            body: `距离上次打卡提醒已过去 10 分钟，请记得及时完成${type === 'in' ? '上班' : '下班'}打卡`,
+            title: type === 'in' ? '上班打卡提醒' : '下班打卡提醒',
+            body: `已过去 10 分钟，请记录${type === 'in' ? '上班' : '下班'}工时`,
             schedule: { at: snoozeTime, allowWhileIdle: true },
             channelId: 'daka_reminders',
             actionTypeId: 'DAKA_ACTIONS',
@@ -370,7 +370,7 @@
         ]
       });
       Haptic.tick();
-      toast('已设置 10 分钟后再次提醒');
+      toast('10 分钟后再次提醒');
     } catch (e) {
       console.error('[Notification] 延时提醒设置失败:', e);
     }
@@ -760,11 +760,11 @@
     const noteVal = $('e-note').value.trim();
 
     if (inVal && !isValidTimeStr(inVal)) {
-      toast('上班时间不合法，小时需00~23，分钟需00~59');
+      toast('时间格式不正确');
       return;
     }
     if (outVal && !isValidTimeStr(outVal)) {
-      toast('下班时间不合法，小时需00~23，分钟需00~59');
+      toast('时间格式不正确');
       return;
     }
 
@@ -781,7 +781,7 @@
     closeEditSheet();
     Haptic.success();
     renderAll();
-    toast('已保存修改');
+    toast('已保存');
     autoSyncByStorageMode();
   });
 
@@ -789,9 +789,9 @@
   $('e-del').addEventListener('click', async () => {
     if (!editingKey) return;
     const ok = await window.customConfirm({
-      title: '删除打卡记录',
-      message: `确定要删除 ${editingKey} 的打卡记录吗？删除后不可撤销。`,
-      confirmText: '删除记录',
+      title: '删除记录',
+      message: `确定删除 ${editingKey} 的记录吗？`,
+      confirmText: '删除',
       cancelText: '取消',
       isDanger: true
     });
@@ -801,7 +801,7 @@
       closeEditSheet();
       Haptic.warning();
       renderAll();
-      toast('已删除该日打卡记录');
+      toast('已删除记录');
       autoSyncByStorageMode();
     }
   });
@@ -948,7 +948,7 @@
         updateThemeSegUI(mode);
         if ($('set-theme')) $('set-theme').value = mode;
         Haptic.tap();
-        toast('已切换主题');
+        toast('主题已切换');
       });
     });
     // 延迟与初始确保布局计算就绪
@@ -1073,7 +1073,7 @@
       saveSet();
       applyTextSize(settings.textSize);
       Haptic.tap();
-      toast('已调整文字大小');
+      toast('字号已切换');
     });
   }
 
@@ -1264,7 +1264,7 @@
   setupCustomTimeInputs();
 
   // 4. 全局通用自绘确认模态弹窗 (替代原生 confirm)
-  window.customConfirm = function({ title = '操作确认', message = '', confirmText = '确定', cancelText = '取消', isDanger = false } = {}) {
+  window.customConfirm = function({ title = '确认', message = '', confirmText = '确定', cancelText = '取消', isDanger = false } = {}) {
     return new Promise(resolve => {
       const modal = $('custom-confirm-modal');
       const mask = $('custom-confirm-mask');
@@ -1371,7 +1371,7 @@
       Haptic.tap();
       const granted = await requestNotificationPermission();
       if (!granted) {
-        toast('请先在系统设置中允许通知权限');
+        toast('请先开启通知权限');
         return;
       }
       if (isNativePlatform()) {
@@ -1384,7 +1384,7 @@
                 {
                   id: 9999,
                   title: '工时打卡提醒 (测试)',
-                  body: '测试提醒通知已就绪：可在下方尝试一键打卡或稍后提醒',
+                  body: '这是一条打卡测试通知',
                   schedule: { at: new Date(Date.now() + 800), allowWhileIdle: true },
                   channelId: 'daka_reminders',
                   actionTypeId: 'DAKA_ACTIONS',
@@ -1392,15 +1392,15 @@
                 }
               ]
             });
-            toast('已发送原生测试提醒，请下拉通知栏查看');
+            toast('已发送测试通知');
             return;
           } catch (e) {
             console.error('[Notification] 发送原生测试通知异常:', e);
           }
         }
       }
-      sendNotification('工时打卡提醒', '测试提醒通知已就绪：到点将提醒您按时打卡');
-      toast('已发送测试提醒');
+      sendNotification('工时打卡提醒', '这是一条打卡测试通知');
+      toast('已发送测试通知');
     });
   }
 
@@ -1437,9 +1437,9 @@
     });
 
     if (storageDescEl) {
-      if (validMode === 'local') storageDescEl.textContent = '默认本地离线 · 数据安全私密';
-      else if (validMode === 'cloudflare') storageDescEl.textContent = 'Cloudflare D1 · 免费跨设备同步';
-      else if (validMode === 'webdav') storageDescEl.textContent = 'WebDAV 个人网盘 · 自主保管数据';
+      if (validMode === 'local') storageDescEl.textContent = '本地存储';
+      else if (validMode === 'cloudflare') storageDescEl.textContent = 'Cloudflare 同步';
+      else if (validMode === 'webdav') storageDescEl.textContent = 'WebDAV 同步';
     }
   }
 
@@ -1491,9 +1491,9 @@
       try {
         await navigator.clipboard.writeText(code);
         Haptic.success();
-        toast(`已复制同步码：${code}，在其他设备填入即可`);
+        toast(`已复制同步码：${code}`);
       } catch {
-        toast(`专属同步码：${code}`);
+        toast(`同步码：${code}`);
       }
     });
   }
@@ -1505,7 +1505,7 @@
       if ($('set-user-id')) $('set-user-id').value = settings.cloudUserId;
       saveSet();
       Haptic.tick();
-      toast(`已生成新同步码：${settings.cloudUserId}`);
+      toast(`已生成同步码：${settings.cloudUserId}`);
     });
   }
 
@@ -1515,7 +1515,7 @@
       settings.autoCloudSync = e.target.checked;
       saveSet();
       Haptic.tap();
-      toast(settings.autoCloudSync ? '已开启打卡自动同步' : '已关闭打卡自动同步');
+      toast(settings.autoCloudSync ? '已开启自动同步' : '已关闭自动同步');
     });
   }
 
@@ -1524,7 +1524,7 @@
     const statusEl = $('cloud-sync-status');
     const userId = ensureCloudUserId();
     const url = getCloudSyncUrl();
-    if (statusEl) statusEl.textContent = '正在连接云端双向同步...';
+    if (statusEl) statusEl.textContent = '正在同步...';
     try {
       // 1. 获取云端已有打卡记录与设置
       let cloudLog = {};
@@ -1576,20 +1576,20 @@
         if (postData && postData.ok) {
           const total = Object.keys(mergedLog).length;
           const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-          if (statusEl) statusEl.textContent = `云端已同步 · 共 ${total} 条记录 · ${timeStr}`;
+          if (statusEl) statusEl.textContent = `已同步 · 共 ${total} 条 · ${timeStr}`;
           if (!silent) {
             Haptic.success();
-            toast(`智能双向同步完成 · 云端共 ${total} 条记录`);
+            toast(`已同步 ${total} 条记录`);
           }
           return true;
         }
       }
-      if (statusEl) statusEl.textContent = '本地优先 · 离线已安全保存';
-      if (!silent) toast('已保存在本地，网络恢复后自动同步');
+      if (statusEl) statusEl.textContent = '已保存到本地';
+      if (!silent) toast('已保存到本地');
       return false;
     } catch (err) {
-      if (statusEl) statusEl.textContent = '本地优先 · 离线已安全保存';
-      if (!silent) toast('已保存在本地，网络恢复后自动同步');
+      if (statusEl) statusEl.textContent = '已保存到本地';
+      if (!silent) toast('已保存到本地');
       return false;
     }
   }
@@ -1598,7 +1598,7 @@
     const statusEl = $('cloud-sync-status');
     const userId = ensureCloudUserId();
     const url = getCloudSyncUrl();
-    if (statusEl) statusEl.textContent = '正在备份至云端...';
+    if (statusEl) statusEl.textContent = '正在备份...';
     try {
       const res = await fetch(url, {
         method: 'POST',
@@ -1613,20 +1613,20 @@
         if (data && data.ok) {
           const count = Object.keys(log).length;
           const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-          if (statusEl) statusEl.textContent = `云端已备份 · 共 ${count} 条记录 · ${timeStr}`;
+          if (statusEl) statusEl.textContent = `已备份 · 共 ${count} 条 · ${timeStr}`;
           if (!silent) {
             Haptic.success();
-            toast(`已备份 ${count} 条记录到 Cloudflare`);
+            toast(`已备份 ${count} 条记录`);
           }
           return true;
         }
       }
-      if (statusEl) statusEl.textContent = '本地优先 · 离线已保存';
-      if (!silent) toast('已保存在本地');
+      if (statusEl) statusEl.textContent = '已保存到本地';
+      if (!silent) toast('已保存到本地');
       return false;
     } catch {
-      if (statusEl) statusEl.textContent = '本地优先 · 离线已保存';
-      if (!silent) toast('已保存在本地');
+      if (statusEl) statusEl.textContent = '已保存到本地';
+      if (!silent) toast('已保存到本地');
       return false;
     }
   }
@@ -1635,7 +1635,7 @@
     const statusEl = $('cloud-sync-status');
     const userId = ensureCloudUserId();
     const url = getCloudSyncUrl();
-    if (statusEl) statusEl.textContent = '正在从云端读取...';
+    if (statusEl) statusEl.textContent = '正在读取...';
     try {
       const res = await fetch(url, {
         headers: { 'X-User-Id': userId }
@@ -1648,18 +1648,18 @@
             log = Object.assign({}, log, data.log);
             saveLog();
             renderAll();
-            if (statusEl) statusEl.textContent = `云端已拉取 · 共 ${cloudKeys.length} 条记录`;
+            if (statusEl) statusEl.textContent = `已拉取 · 共 ${cloudKeys.length} 条`;
             Haptic.success();
-            toast(`已恢复云端 ${cloudKeys.length} 条打卡记录`);
+            toast(`已恢复 ${cloudKeys.length} 条记录`);
             return;
           }
         }
       }
-      if (statusEl) statusEl.textContent = '云端暂无记录，以本地为准';
-      toast('云端暂无更多记录');
+      if (statusEl) statusEl.textContent = '云端暂无记录';
+      toast('云端暂无记录');
     } catch {
-      if (statusEl) statusEl.textContent = '连接云端超时，以本地为准';
-      toast('无法连接云端，请检查网络');
+      if (statusEl) statusEl.textContent = '无法连接云端';
+      toast('无法连接云端');
     }
   }
 
@@ -1704,7 +1704,7 @@
 
   async function testWebDAVConnection() {
     if (!window.WebDAVClient) {
-      toast('WebDAV 组件尚未就绪');
+      toast('WebDAV 未就绪');
       return;
     }
     const statusEl = $('webdav-sync-status');
@@ -1712,24 +1712,24 @@
     Haptic.tap();
     const res = await window.WebDAVClient.testConnection(settings.webdav);
     if (res.ok) {
-      if (statusEl) statusEl.textContent = '连接成功 · 网盘正常';
+      if (statusEl) statusEl.textContent = '已连接';
       Haptic.success();
-      toast('WebDAV 网盘连接成功');
+      toast('WebDAV 连接成功');
     } else {
       if (statusEl) statusEl.textContent = res.message || '连接失败';
       Haptic.warn();
-      toast(res.message || '连接失败，请检查地址与密码');
+      toast(res.message || '连接失败，请检查配置');
     }
   }
 
   async function pushToWebDAV(silent = false) {
     if (!window.WebDAVClient) return false;
     if (!settings.webdav || !settings.webdav.url) {
-      if (!silent) toast('请先填写 WebDAV 网盘地址');
+      if (!silent) toast('请填写 WebDAV 地址');
       return false;
     }
     const statusEl = $('webdav-sync-status');
-    if (statusEl) statusEl.textContent = '正在备份到网盘...';
+    if (statusEl) statusEl.textContent = '正在备份...';
     const payload = {
       app: 'worklog',
       version: 2,
@@ -1740,17 +1740,17 @@
     const res = await window.WebDAVClient.uploadBackup(settings.webdav, payload);
     if (res.ok) {
       const count = Object.keys(log).length;
-      if (statusEl) statusEl.textContent = `已备份 ${count} 条记录到网盘`;
+      if (statusEl) statusEl.textContent = `已备份 ${count} 条记录`;
       if (!silent) {
         Haptic.success();
-        toast('已成功备份到 WebDAV 网盘');
+        toast('已备份到 WebDAV');
       }
       return true;
     } else {
       if (statusEl) statusEl.textContent = res.message || '备份失败';
       if (!silent) {
         Haptic.warn();
-        toast(res.message || '备份失败，请检查网盘');
+        toast(res.message || '备份失败');
       }
       return false;
     }
@@ -1759,37 +1759,37 @@
   async function pullFromWebDAV() {
     if (!window.WebDAVClient) return;
     if (!settings.webdav || !settings.webdav.url) {
-      toast('请先填写 WebDAV 网盘地址');
+      toast('请填写 WebDAV 地址');
       return;
     }
     const statusEl = $('webdav-sync-status');
-    if (statusEl) statusEl.textContent = '正在从网盘读取...';
+    if (statusEl) statusEl.textContent = '正在读取...';
     Haptic.tap();
     const res = await window.WebDAVClient.downloadBackup(settings.webdav);
     if (res.ok && res.data && res.data.log) {
       const cloudKeys = Object.keys(res.data.log);
       if (cloudKeys.length === 0) {
-        if (statusEl) statusEl.textContent = '网盘备份中暂无打卡记录';
-        toast('网盘中没有打卡记录');
+        if (statusEl) statusEl.textContent = '网盘暂无记录';
+        toast('网盘暂无记录');
         return;
       }
       const ok = await window.customConfirm({
-        title: '网盘数据合并',
-        message: `从网盘恢复 ${cloudKeys.length} 天打卡记录，确定与本地数据合并吗？`,
-        confirmText: '合并恢复',
+        title: '恢复数据',
+        message: `从网盘恢复 ${cloudKeys.length} 天打卡记录并与本地合并？`,
+        confirmText: '确定',
         cancelText: '取消'
       });
       if (!ok) return;
       log = Object.assign({}, log, res.data.log);
       saveLog();
       renderAll();
-      if (statusEl) statusEl.textContent = `已恢复网盘 ${cloudKeys.length} 条记录`;
+      if (statusEl) statusEl.textContent = `已恢复 ${cloudKeys.length} 条记录`;
       Haptic.success();
-      toast(`已恢复网盘 ${cloudKeys.length} 条记录`);
+      toast(`已恢复 ${cloudKeys.length} 条记录`);
     } else {
       if (statusEl) statusEl.textContent = res.message || '读取失败';
       Haptic.warn();
-      toast(res.message || '无法读取网盘备份文件');
+      toast(res.message || '无法读取备份文件');
     }
   }
 
@@ -1820,7 +1820,7 @@
         padInstance.setDebounceMs(ms);
       }
       Haptic.tick();
-      toast('已更新手写识别速度');
+      toast('已更新识别速度');
     });
   }
   if ($('set-celebration')) {
@@ -1828,7 +1828,7 @@
       settings.celebrationFx = e.target.value;
       saveSet();
       Haptic.tick();
-      toast('已更新打卡庆祝动效');
+      toast('已更新打卡动效');
     });
   }
   $('set-lunch').addEventListener('change', e => {
@@ -1862,9 +1862,9 @@
         if (!data || typeof data.log !== 'object') throw new Error();
         const n = Object.keys(data.log).length;
         const ok = await window.customConfirm({
-          title: '覆盖导入确认',
-          message: `导入 ${n} 天打卡记录，会覆盖当前设备上的所有记录，确定要导入吗？`,
-          confirmText: '确定覆盖',
+          title: '导入备份',
+          message: `导入 ${n} 天记录将覆盖当前本地记录，确定导入吗？`,
+          confirmText: '导入',
           cancelText: '取消',
           isDanger: true
         });
@@ -1874,7 +1874,7 @@
         saveLog(); saveSet();
         $('set-wage').value = settings.wage; $('set-lunch').value = settings.lunch; $('set-std').value = settings.std;
         renderAll(); toast(`已导入 ${n} 天记录`);
-      } catch { toast('文件格式不对，没有导入'); }
+      } catch { toast('导入失败：文件格式不正确'); }
       finally { e.target.value = ''; }
     };
     rd.readAsText(f);
@@ -2296,10 +2296,10 @@
   let currentGridDigits = ['', '', '', ''];
   let autoAdvanceTimer = null;
   const gridTipTexts = [
-    '请书写：时十位，范围 0、1 或 2',
-    '请书写：时个位，范围 0 到 9',
-    '请书写：分十位，范围 0 到 5',
-    '请书写：分个位，范围 0 到 9'
+    '时十位（0、1、2）',
+    '时个位（0-9）',
+    '分十位（0-5）',
+    '分个位（0-9）'
   ];
 
   function isValidTimeStr(str) {
@@ -2384,7 +2384,7 @@
 
     const hint = $('wiz-pad-hint');
     if (hint) {
-      hint.textContent = gridTipTexts[currentGridIdx] || '请在此书写当前数字';
+      hint.textContent = gridTipTexts[currentGridIdx] || '书写数字';
     }
   }
 
@@ -2660,9 +2660,9 @@
     wizDelBtn.addEventListener('click', async () => {
       if (!wizKey) return;
       const ok = await window.customConfirm({
-        title: '删除打卡记录',
-        message: `确定要删除 ${wizKey} 的打卡记录吗？`,
-        confirmText: '删除记录',
+        title: '删除记录',
+        message: `确定删除 ${wizKey} 的记录吗？`,
+        confirmText: '删除',
         cancelText: '取消',
         isDanger: true
       });
@@ -2672,7 +2672,7 @@
         closeWizard();
         Haptic.warning();
         renderAll();
-        toast('已删除该日记录');
+        toast('已删除记录');
         autoSyncByStorageMode();
       }
     });
@@ -2687,34 +2687,34 @@
     isKeypadMode = false;
     $('wiz-keypad').hidden = true;
     $('wiz-pad-container').style.display = '';
-    $('wiz-toggle-keypad').textContent = '切换键盘';
+    $('wiz-toggle-keypad').textContent = '键盘输入';
     if (padInstance) padInstance.clear();
 
     if (step === 1) {
-      $('wiz-step-pill').textContent = '第 1 步 / 共 3 步 · 上班';
-      $('wiz-title').textContent = '您几点上班？';
+      $('wiz-step-pill').textContent = '1 / 3 · 上班';
+      $('wiz-title').textContent = '上班时间';
       $('wiz-step-time').hidden = false;
       $('wiz-step-rest').hidden = true;
       $('wiz-prev-btn').hidden = true;
-      $('wiz-next-btn').textContent = '对，下一步';
+      $('wiz-next-btn').textContent = '下一步';
       syncTimeToGrid(wizData.in || '');
       renderCandidates(wizData.in ? [wizData.in] : ['08:00', '08:30', '09:00']);
     } else if (step === 2) {
-      $('wiz-step-pill').textContent = '第 2 步 / 共 3 步 · 下班';
-      $('wiz-title').textContent = '您几点下班？';
+      $('wiz-step-pill').textContent = '2 / 3 · 下班';
+      $('wiz-title').textContent = '下班时间';
       $('wiz-step-time').hidden = false;
       $('wiz-step-rest').hidden = true;
       $('wiz-prev-btn').hidden = false;
-      $('wiz-next-btn').textContent = '对，下一步';
+      $('wiz-next-btn').textContent = '下一步';
       syncTimeToGrid(wizData.out || '');
       renderCandidates(wizData.out ? [wizData.out] : ['17:30', '18:00', '18:30']);
     } else if (step === 3) {
-      $('wiz-step-pill').textContent = '第 3 步 / 共 3 步 · 休息';
-      $('wiz-title').textContent = '中午休息多久？';
+      $('wiz-step-pill').textContent = '3 / 3 · 午休';
+      $('wiz-title').textContent = '午休时长';
       $('wiz-step-time').hidden = true;
       $('wiz-step-rest').hidden = false;
       $('wiz-prev-btn').hidden = false;
-      $('wiz-next-btn').textContent = '完成记录';
+      $('wiz-next-btn').textContent = '完成';
 
       // 智能常用午休卡片：动态基于时间段计算实际扣除小时数，杜绝计算误差
       const routine = settings.routineLunch;
@@ -2726,6 +2726,7 @@
         const displaySpan = realSpan > 0 ? realSpan : (routine.span || 60);
         const hStr = fmtH(displaySpan);
         $('rc-time-txt').textContent = `${rStart} – ${rEnd}（扣除 ${hStr} 小时）`;
+        $('rc-use-btn').textContent = '使用常用午休';
         $('rc-use-btn').onclick = () => {
           wizData.lunchSpan = displaySpan;
           wizData.lunchStart = rStart;
@@ -2750,22 +2751,22 @@
 
   function saveAndFinishWizard() {
     if (!wizData.in) {
-      toast('请先输入上班时间');
+      toast('请填写上班时间');
       gotoStep(1);
       return;
     }
     if (!isValidTimeStr(wizData.in)) {
-      toast('上班时间不合法，小时需00~23，分钟需00~59');
+      toast('时间格式不正确');
       gotoStep(1);
       return;
     }
     if (!wizData.out) {
-      toast('请先输入下班时间');
+      toast('请填写下班时间');
       gotoStep(2);
       return;
     }
     if (!isValidTimeStr(wizData.out)) {
-      toast('下班时间不合法，小时需00~23，分钟需00~59');
+      toast('时间格式不正确');
       gotoStep(2);
       return;
     }
@@ -2801,22 +2802,22 @@
     if (wizStep === 1) {
       const v = getStepTime();
       if (!v || v === '--:--' || v.length < 5) {
-        toast('请先将上方 4 个格子书写完整');
+        toast('请填写完整时间');
         return;
       }
       if (!isValidTimeStr(v)) {
-        toast('上班时间不合法：小时需在 00~23 之间，分钟需在 00~59 之间');
+        toast('时间格式不正确');
         return;
       }
       gotoStep(2);
     } else if (wizStep === 2) {
       const v = getStepTime();
       if (!v || v === '--:--' || v.length < 5) {
-        toast('请先将上方 4 个格子书写完整');
+        toast('请填写完整时间');
         return;
       }
       if (!isValidTimeStr(v)) {
-        toast('下班时间不合法：小时需在 00~23 之间，分钟需在 00~59 之间');
+        toast('时间格式不正确');
         return;
       }
       gotoStep(3);
@@ -2855,7 +2856,7 @@
     const hasRecorded = !!(r.in && r.out);
     if (hasRecorded) {
       Haptic.warning();
-      toast('今日已完成打卡，如需调整工时请点击下方“微调今日工时”');
+      toast('今日已打卡，点击“微调”可调整');
       return;
     }
 
@@ -3003,7 +3004,7 @@
       const r = log[k] || {};
       if (r.in && r.out) {
         Haptic.tick();
-        toast('今日已完成打卡，点击下方“微调今日工时”可调整');
+        toast('今日已打卡，点击“微调”可调整');
       }
     });
   }
@@ -3168,8 +3169,8 @@
     const dialTitle = $('adj-dial-title');
     if (dialTitle) {
       dialTitle.textContent = adjActivePart === 'lunch'
-        ? '左右滑动调节午休时长'
-        : (adjActivePart === 'in' ? '左右滑动微调上班时间' : '左右滑动微调下班时间');
+        ? '调节午休时长'
+        : (adjActivePart === 'in' ? '微调上班时间' : '微调下班时间');
     }
     document.querySelectorAll('#adj-tabs .adj-tab').forEach(tab => {
       tab.classList.toggle('on', tab.dataset.part === adjActivePart);
@@ -3299,7 +3300,7 @@
     renderAll();
     closeAdjustSheet();
     Haptic.success();
-    toast(`已更新工时：${fmtH(worked(r))} 小时`);
+    toast(`工时已更新：${fmtH(worked(r))} 小时`);
     if (window.CelebrationFX && settings.celebrationFx !== 'none') {
       window.CelebrationFX.celebrate(settings.celebrationFx || 'confetti');
     }
@@ -3468,7 +3469,7 @@
   }
 
   // ---------- 应用版本与云端更新控制器（首页浮窗与即时重载） ----------
-  const APP_VERSION = '1.0.7';
+  const APP_VERSION = '1.0.8';
   const CLOUD_PAGES_ORIGIN = 'https://daka-f3o.pages.dev';
   let availableUpdate = null;
 
@@ -3511,7 +3512,7 @@
     const actionBtn = $('huf-action-btn');
     if (textEl) textEl.textContent = `发现新版本 v${data.version}`;
     if (badgeText) badgeText.textContent = '新版';
-    if (actionBtn) actionBtn.textContent = '立即更新';
+    if (actionBtn) actionBtn.textContent = '更新';
     floatEl.classList.remove('is-updating');
     floatEl.hidden = false;
   }
@@ -3529,7 +3530,7 @@
     const actionBtn = $('huf-action-btn');
     floatEl.classList.add('is-updating');
     if (badgeText) badgeText.textContent = `${pct}%`;
-    if (textEl) textEl.textContent = '正在软件内极速更新...';
+    if (textEl) textEl.textContent = '正在更新...';
     if (actionBtn) actionBtn.textContent = '查看进度';
   }
 
@@ -3550,7 +3551,7 @@
     if (oldVerEl) oldVerEl.textContent = `当前 v${APP_VERSION}`;
     if (newVerEl) newVerEl.textContent = `最新 v${data.version}`;
     if (notesEl) notesEl.textContent = data.releaseNotes || '性能与体验优化，建议升级。';
-    if (metaEl) metaEl.textContent = `发布时间: ${data.buildTime || '最新'} · 软件内安全传输`;
+    if (metaEl) metaEl.textContent = `发布时间: ${data.buildTime || '最新'}`;
 
     // 若当前正在更新，保持更新状态机显示，不重置界面
     if (isUpdating) {
@@ -3582,7 +3583,7 @@
 
     if (updateBtn) {
       updateBtn.style.display = '';
-      updateBtn.textContent = '立即在软件内更新';
+      updateBtn.textContent = '立即更新';
       updateBtn.className = 'em-act-btn primary m3-ripple-host';
       updateBtn.disabled = false;
     }
@@ -3595,7 +3596,7 @@
     if (apkBtn) {
       if (!isNative && (data.apkUrl || data.downloadUrl)) {
         apkBtn.style.display = 'flex';
-        apkBtn.textContent = '保存安装包到本地 (不跳转)';
+        apkBtn.textContent = '下载安装包';
       } else {
         apkBtn.style.display = 'none';
       }
@@ -3659,7 +3660,7 @@
 
     if (!isNative) {
       if (footer) footer.style.display = 'none';
-      toast('新版本已就绪，正在无缝载入...');
+      toast('新版本已就绪，正在载入...');
       setTimeout(() => {
         window.location.reload(true);
       }, 1400);
@@ -3670,13 +3671,13 @@
       if (apkBtn) apkBtn.style.display = 'none';
       if (installBtn) {
         installBtn.style.display = 'flex';
-        installBtn.textContent = '立即安装更新';
+        installBtn.textContent = '安装更新';
       }
       if (cancelBtn) {
         cancelBtn.textContent = '完成';
         cancelBtn.style.display = 'flex';
       }
-      toast('更新安装包已下载完成，正在唤起系统安装...');
+      toast('安装包已下载，正在启动安装...');
     }
   }
 
@@ -3701,7 +3702,7 @@
     if (footer) footer.style.display = '';
     if (updateBtn) {
       updateBtn.style.display = '';
-      updateBtn.textContent = '重新尝试软件内更新';
+      updateBtn.textContent = '重试更新';
       updateBtn.disabled = false;
     }
     if (cancelBtn) {
@@ -3736,25 +3737,25 @@
     if (updateBtn) { updateBtn.hidden = true; updateBtn.style.display = 'none'; }
     if (installBtn) { installBtn.style.display = 'none'; }
     if (apkBtn) { apkBtn.hidden = true; apkBtn.style.display = 'none'; }
-    if (cancelBtn) cancelBtn.textContent = '后台继续更新';
+    if (cancelBtn) cancelBtn.textContent = '后台更新';
 
-    setUpdateProgress(0, '正在建立安全连接...', '软件内高速同步 · 绝不跳转');
+    setUpdateProgress(0, '正在连接...', '准备更新');
 
     const nativeUpdater = getNativeUpdater();
-    const apkUrl = data.apkUrl || data.downloadUrl || `${CLOUD_PAGES_ORIGIN}/release/daka-1.0.3-android.apk`;
+    const apkUrl = data.apkUrl || data.downloadUrl || `${CLOUD_PAGES_ORIGIN}/release/daka-1.0.8-android.apk`;
 
     if (nativeUpdater) {
       // 1. Android 原生环境：通过 Capacitor 插件在软件内静默下载至内部 Cache，完成后直接唤起安装
       try {
         nativeUpdater.addListener('updateProgress', pData => {
           const pct = pData.percent >= 0 ? pData.percent : 50;
-          let detail = '正在高速传输...';
+          let detail = '正在传输...';
           if (pData.loaded && pData.total) {
             const mbLoaded = (pData.loaded / (1024 * 1024)).toFixed(1);
             const mbTotal = (pData.total / (1024 * 1024)).toFixed(1);
-            detail = `已传输 ${mbLoaded} MB / ${mbTotal} MB · 软件内安全通道`;
+            detail = `${mbLoaded} MB / ${mbTotal} MB`;
           }
-          setUpdateProgress(pct, pct < 95 ? '正在软件内下载更新包...' : '正在校验安装包签名...', detail);
+          setUpdateProgress(pct, pct < 95 ? '正在下载更新包...' : '正在校验安装包...', detail);
         });
 
         nativeUpdater.addListener('updateComplete', () => {
@@ -3773,11 +3774,11 @@
       // 2. Web / PWA 环境：在软件内无感预加载所有核心资源、刷写 Cache 与 Service Worker
       try {
         const steps = [
-          { p: 18, s: '正在连接版本服务器并校验签名...', d: '校验数据包完整性...' },
-          { p: 45, s: '正在软件内预加载应用核心包...', d: '更新核心逻辑与界面资产...' },
-          { p: 76, s: '正在更新离线缓存存储...', d: '写入 CacheStorage 高速缓存...' },
-          { p: 92, s: '正在刷新 Service Worker 运行时...', d: '注册全新离线环境...' },
-          { p: 100, s: '更新完成！', d: '即将无缝生效' }
+          { p: 18, s: '正在连接服务器...', d: '校验数据完整性...' },
+          { p: 45, s: '正在获取应用更新...', d: '更新核心逻辑与界面...' },
+          { p: 76, s: '正在更新离线缓存...', d: '写入缓存存储...' },
+          { p: 92, s: '正在刷新离线环境...', d: '更新离线服务...' },
+          { p: 100, s: '更新完成', d: '即将生效' }
         ];
 
         let curStep = 0;
@@ -3836,7 +3837,7 @@
     const nativeUpdater = getNativeUpdater();
     if (nativeUpdater && nativeUpdater.installDownloadedApk) {
       try {
-        toast('正在唤起系统安装器...');
+        toast('正在启动安装...');
         await nativeUpdater.installDownloadedApk();
       } catch (e) {
         toast('呼起安装失败: ' + (e.message || '请检查未知应用安装权限'));
@@ -3847,8 +3848,8 @@
   // 纯前端静默下载安装包文件到本地 (Blob 方式，绝不跳转浏览器窗口)
   async function downloadApkBlobInApp() {
     const data = availableUpdate || {};
-    const url = data.apkUrl || data.downloadUrl || `${CLOUD_PAGES_ORIGIN}/release/daka-1.0.3-android.apk`;
-    toast('正在软件内下载 APK 安装包...');
+    const url = data.apkUrl || data.downloadUrl || `${CLOUD_PAGES_ORIGIN}/release/daka-1.0.8-android.apk`;
+    toast('正在下载安装包...');
 
     try {
       const progressBox = $('um-progress-box');
@@ -3860,7 +3861,7 @@
       if (updateBtn) updateBtn.style.display = 'none';
       if (apkBtn) apkBtn.style.display = 'none';
 
-      setUpdateProgress(15, '正在请求安装包数据...', '软件内高速直接传输');
+      setUpdateProgress(15, '正在请求数据...', '准备下载');
 
       const res = await fetch(url);
       if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -3879,13 +3880,13 @@
         loaded += value.length;
         if (total > 0) {
           const pct = Math.round((loaded / total) * 100);
-          setUpdateProgress(pct, '正在软件内传输安装包...', `${(loaded / 1048576).toFixed(1)} MB / ${(total / 1048576).toFixed(1)} MB`);
+          setUpdateProgress(pct, '正在下载安装包...', `${(loaded / 1048576).toFixed(1)} MB / ${(total / 1048576).toFixed(1)} MB`);
         } else {
-          setUpdateProgress(60, '正在软件内接收数据...', `${(loaded / 1048576).toFixed(1)} MB 已下载`);
+          setUpdateProgress(60, '正在接收数据...', `${(loaded / 1048576).toFixed(1)} MB`);
         }
       }
 
-      setUpdateProgress(100, '传输完成！正在保存到本地...', '完成');
+      setUpdateProgress(100, '下载完成，正在保存...', '完成');
       const blob = new Blob(chunks, { type: 'application/vnd.android.package-archive' });
       const blobUrl = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -3949,7 +3950,7 @@
       }
 
       if (!remoteData || !remoteData.version) {
-        if (isManual) toast('无法连接到更新服务器，请检查手机网络');
+        if (isManual) toast('无法连接到更新服务器，请检查网络');
         return;
       }
 
@@ -4017,16 +4018,16 @@
 
   if (mode === 'update-float') {
     availableUpdate = {
-      version: '1.0.4',
-      buildTime: '2026-10-10 12:00:00',
-      releaseNotes: '1. 软件内无缝高速更新，绝不跳转浏览器与下载器\n2. 纯正 Google Material 3 灵动动效：流体进度条、发光波纹与 SVG 完成弹跳\n3. 导航栏弹性拉伸指示器与微交互触感升级'
+      version: '1.0.8',
+      buildTime: '2026-10-14 13:30:00',
+      releaseNotes: '1. 精简界面文案与提示信息\n2. 优化操作反馈与交互体验'
     };
     showUpdateFloat(availableUpdate);
   } else if (mode === 'update-modal') {
     availableUpdate = {
-      version: '1.0.4',
-      buildTime: '2026-10-10 12:00:00',
-      releaseNotes: '1. 软件内无缝高速更新，绝不跳转浏览器与下载器\n2. 纯正 Google Material 3 灵动动效：流体进度条、发光波纹与 SVG 完成弹跳\n3. 导航栏弹性拉伸指示器与微交互触感升级'
+      version: '1.0.8',
+      buildTime: '2026-10-14 13:30:00',
+      releaseNotes: '1. 精简界面文案与提示信息\n2. 优化操作反馈与交互体验'
     };
     openUpdateModal(availableUpdate);
   }
