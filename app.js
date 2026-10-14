@@ -262,7 +262,7 @@
         await plugin.createChannel({
           id: 'daka_reminders',
           name: '工时打卡提醒',
-          description: '工作日上下班与打卡防漏提醒通知',
+          description: '工作日打卡提醒',
           importance: 3,
           visibility: 1,
           vibration: true,
@@ -283,7 +283,7 @@
                 },
                 {
                   id: 'snooze_10',
-                  title: '10分钟后再提醒'
+                  title: '10 分钟后提醒'
                 }
               ]
             }
@@ -303,7 +303,7 @@
           } else if (actionId === 'snooze_10') {
             handleNotificationSnooze(remindType);
           } else if (actionId === 'tap') {
-            toast(remindType === 'in' ? '今日上班打卡提醒' : '今日下班打卡提醒');
+            toast(remindType === 'in' ? '上班提醒' : '下班提醒');
           }
         });
       }
@@ -361,7 +361,7 @@
           {
             id: snoozeId,
             title: type === 'in' ? '上班打卡提醒' : '下班打卡提醒',
-            body: `已过去 10 分钟，请记录${type === 'in' ? '上班' : '下班'}工时`,
+            body: `延时 10 分钟提醒：记录${type === 'in' ? '上班' : '下班'}工时`,
             schedule: { at: snoozeTime, allowWhileIdle: true },
             channelId: 'daka_reminders',
             actionTypeId: 'DAKA_ACTIONS',
@@ -416,7 +416,7 @@
             notificationsToSchedule.push({
               id: 10000 + dayOffset * 2 + 1,
               title: '上班打卡提醒',
-              body: `已到达预定时间 ${remInTime}，请记得长按打卡记录工时`,
+              body: `到达上班时间 ${remInTime}，长按打卡记录工时`,
               schedule: { at: inDateTime, allowWhileIdle: true },
               channelId: 'daka_reminders',
               actionTypeId: 'DAKA_ACTIONS',
@@ -435,7 +435,7 @@
             notificationsToSchedule.push({
               id: 10000 + dayOffset * 2 + 2,
               title: '下班打卡提醒',
-              body: `已到达下班时间 ${remOutTime}，请记得完成今日下班打卡`,
+              body: `到达下班时间 ${remOutTime}，长按打卡记录工时`,
               schedule: { at: outDateTime, allowWhileIdle: true },
               channelId: 'daka_reminders',
               actionTypeId: 'DAKA_ACTIONS',
@@ -474,7 +474,7 @@
       const remInTime = settings.reminderInTime || '08:20';
       if (curTime === remInTime) {
         hasNotifiedTodayIn = true;
-        sendNotification('上班打卡提醒', `已到达预定时间 ${remInTime}，请记得长按打卡记录工时`);
+        sendNotification('上班打卡提醒', `到达上班时间 ${remInTime}，长按打卡记录工时`);
       }
     }
 
@@ -482,7 +482,7 @@
       const remOutTime = settings.reminderOutTime || '17:30';
       if (curTime === remOutTime) {
         hasNotifiedTodayOut = true;
-        sendNotification('下班打卡提醒', `已到达下班时间 ${remOutTime}，请记得完成今日下班打卡`);
+        sendNotification('下班打卡提醒', `到达下班时间 ${remOutTime}，长按打卡记录工时`);
       }
     }
   }
@@ -606,7 +606,7 @@
     let total = 0, days = 0;
     keys.forEach(k => { const w = worked(log[k]); if (w != null) { total += w; days++; } });
     $('m-title').innerHTML = `${monthCur.getFullYear()}年${monthCur.getMonth() + 1}月<small>${fmtH(total)} h · ${days} 天</small>`;
-    if (!keys.length) { $('m-list').innerHTML = '<div class="empty">这个月还没有记录</div>'; return; }
+    if (!keys.length) { $('m-list').innerHTML = '<div class="empty">暂无记录</div>'; return; }
     $('m-list').innerHTML = keys.reverse().map(k => {
       const r = log[k], d = dateOf(k);
       const miss = isMissing(r);
@@ -1383,8 +1383,8 @@
               notifications: [
                 {
                   id: 9999,
-                  title: '工时打卡提醒 (测试)',
-                  body: '这是一条打卡测试通知',
+                  title: '打卡提醒测试',
+                  body: '测试通知',
                   schedule: { at: new Date(Date.now() + 800), allowWhileIdle: true },
                   channelId: 'daka_reminders',
                   actionTypeId: 'DAKA_ACTIONS',
@@ -1399,7 +1399,7 @@
           }
         }
       }
-      sendNotification('工时打卡提醒', '这是一条打卡测试通知');
+      sendNotification('打卡提醒测试', '测试通知');
       toast('已发送测试通知');
     });
   }
@@ -1973,8 +1973,7 @@
       <div class="rec-dash double"></div>
 
       <div class="rec-footer">
-        <div>*** 感谢您的辛勤付出！辛苦了 ***</div>
-        <div>请核对打卡工时明细，妥善留存核算小票</div>
+        <div>请核对工时明细并留存凭单</div>
         <div class="rec-barcode-mock">
           <i style="width:2px"></i><i style="width:4px"></i><i style="width:1px"></i><i style="width:3px"></i>
           <i style="width:2px"></i><i style="width:1px"></i><i style="width:4px"></i><i style="width:2px"></i>
@@ -2203,7 +2202,7 @@
         <div style="font-size:20px;font-weight:900;color:#b91c1c;">￥${rep.totalSalary.toFixed(2)}</div>
       </div>
 
-      <div class="memo-stamp">记得按时核对结算，辛劳一个月，好好犒劳自己！</div>
+      <div class="memo-stamp">核算确认</div>
     `;
   }
 
@@ -3469,7 +3468,7 @@
   }
 
   // ---------- 应用版本与云端更新控制器（首页浮窗与即时重载） ----------
-  const APP_VERSION = '1.0.8';
+  const APP_VERSION = '1.0.9';
   const CLOUD_PAGES_ORIGIN = 'https://daka-f3o.pages.dev';
   let availableUpdate = null;
 
@@ -3550,7 +3549,7 @@
 
     if (oldVerEl) oldVerEl.textContent = `当前 v${APP_VERSION}`;
     if (newVerEl) newVerEl.textContent = `最新 v${data.version}`;
-    if (notesEl) notesEl.textContent = data.releaseNotes || '性能与体验优化，建议升级。';
+    if (notesEl) notesEl.textContent = data.releaseNotes || '常规更新与问题修复。';
     if (metaEl) metaEl.textContent = `发布时间: ${data.buildTime || '最新'}`;
 
     // 若当前正在更新，保持更新状态机显示，不重置界面
@@ -3840,7 +3839,7 @@
         toast('正在启动安装...');
         await nativeUpdater.installDownloadedApk();
       } catch (e) {
-        toast('呼起安装失败: ' + (e.message || '请检查未知应用安装权限'));
+        toast('安装失败: ' + (e.message || '未授予安装应用权限'));
       }
     }
   }
@@ -4018,16 +4017,16 @@
 
   if (mode === 'update-float') {
     availableUpdate = {
-      version: '1.0.8',
-      buildTime: '2026-10-14 13:30:00',
-      releaseNotes: '1. 精简界面文案与提示信息\n2. 优化操作反馈与交互体验'
+      version: '1.0.9',
+      buildTime: '2026-10-14 13:45:00',
+      releaseNotes: '1. 遵循 oil-tone 规范精简各界面文本与提示信息，去冗去说教\n2. 优化手写向导、结算单导出与设置页交互文案\n3. 完善更新流程各阶段状态与提示反馈'
     };
     showUpdateFloat(availableUpdate);
   } else if (mode === 'update-modal') {
     availableUpdate = {
-      version: '1.0.8',
-      buildTime: '2026-10-14 13:30:00',
-      releaseNotes: '1. 精简界面文案与提示信息\n2. 优化操作反馈与交互体验'
+      version: '1.0.9',
+      buildTime: '2026-10-14 13:45:00',
+      releaseNotes: '1. 遵循 oil-tone 规范精简各界面文本与提示信息，去冗去说教\n2. 优化手写向导、结算单导出与设置页交互文案\n3. 完善更新流程各阶段状态与提示反馈'
     };
     openUpdateModal(availableUpdate);
   }

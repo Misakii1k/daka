@@ -372,12 +372,9 @@
     curY += 26;
 
     ctx.textAlign = 'center';
-    ctx.font = 'bold 12.5px "Courier New", Consolas, monospace';
-    ctx.fillText('*** 感谢您的辛勤付出！***', logicW / 2, curY);
-    curY += 18;
-    ctx.font = '10px "Courier New", Consolas, monospace';
+    ctx.font = '11px "Courier New", Consolas, monospace';
     ctx.fillStyle = '#64748b';
-    ctx.fillText('请核对打卡工时明细，妥善留存核算小票', logicW / 2, curY);
+    ctx.fillText('请核对工时明细并留存凭单', logicW / 2, curY);
     curY += 24;
 
     const barCodeW = logicW - 100;
@@ -748,9 +745,9 @@
     ctx.textAlign = 'left';
     ctx.font = '11.5px -apple-system, sans-serif';
     ctx.fillStyle = '#94a3b8';
-    ctx.fillText('财务结算说明：', 32, curY);
-    ctx.fillText('1. 本单据系根据日常出勤签到记录自动核算生成；已扣除午间休息。', 32, curY + 18);
-    ctx.fillText('2. 标准工时与时薪数据经过本地加密持久化，具有对账凭据参考效力。', 32, curY + 36);
+    ctx.fillText('说明：', 32, curY);
+    ctx.fillText('1. 依日常出勤记录核算生成，已扣除午休。', 32, curY + 18);
+    ctx.fillText('2. 仅作为工时核对凭据参考。', 32, curY + 36);
 
     return canvas;
   }
@@ -1036,7 +1033,7 @@
     ctx.textAlign = 'center';
     ctx.fillStyle = '#92400e';
     ctx.font = '11.5px "PingFang SC", sans-serif';
-    ctx.fillText('记得按时结算，辛劳一个月，好好犒劳自己！', logicW / 2, curY);
+    ctx.fillText('核算确认', logicW / 2, curY);
 
     return canvas;
   }
