@@ -46,8 +46,23 @@
     }
   }
 
-  const saveLog = () => localStorage.setItem(KEY_LOG, JSON.stringify(log));
-  const saveSet = () => localStorage.setItem(KEY_SET, JSON.stringify(settings));
+  let scheduleTasksTimer = null;
+  const scheduleNotificationTasksDebounced = () => {
+    clearTimeout(scheduleTasksTimer);
+    scheduleTasksTimer = setTimeout(() => {
+      if (typeof scheduleNotificationTasks === 'function') {
+        scheduleNotificationTasks();
+      }
+    }, 120);
+  };
+  const saveLog = () => {
+    localStorage.setItem(KEY_LOG, JSON.stringify(log));
+    scheduleNotificationTasksDebounced();
+  };
+  const saveSet = () => {
+    localStorage.setItem(KEY_SET, JSON.stringify(settings));
+    scheduleNotificationTasksDebounced();
+  };
 
   // ---------- 触感反馈引擎 ----------
   const Haptic = {
@@ -105,74 +120,6 @@
   applyTheme(settings.themeMode || 'system');
   applyTextSize(settings.textSize || 'standard');
 
-  // ---------- 打卡提醒与通知服务 ----------
-  let hasNotifiedTodayIn = false;
-  let hasNotifiedTodayOut = false;
-  let lastCheckedDateKey = '';
-
-  async function requestNotificationPermission() {
-    if (!('Notification' in window)) return false;
-    if (Notification.permission === 'granted') return true;
-    if (Notification.permission !== 'denied') {
-      const res = await Notification.requestPermission();
-      return res === 'granted';
-    }
-    return false;
-  }
-
-  async function sendNotification(title, body) {
-    Haptic.warn();
-    if (!('Notification' in window)) return;
-    if (Notification.permission !== 'granted') return;
-    if (navigator.serviceWorker && navigator.serviceWorker.ready) {
-      try {
-        const reg = await navigator.serviceWorker.ready;
-        reg.showNotification(title, {
-          body,
-          icon: 'icons/icon-192.png',
-          badge: 'icons/icon-192.png',
-          tag: 'daka-reminder',
-          renotify: true
-        });
-        return;
-      } catch {}
-    }
-    try {
-      new Notification(title, { body, icon: 'icons/icon-192.png' });
-    } catch {}
-  }
-
-  function checkReminders() {
-    const now = new Date();
-    const k = keyOf(now);
-    if (k !== lastCheckedDateKey) {
-      lastCheckedDateKey = k;
-      hasNotifiedTodayIn = false;
-      hasNotifiedTodayOut = false;
-    }
-
-    const curTime = hhmm(now);
-    const todayRec = log[k] || {};
-
-    // 1. 上班提醒检测
-    if (settings.reminderInEnabled && !hasNotifiedTodayIn && !todayRec.in) {
-      const remInTime = settings.reminderInTime || '08:20';
-      if (curTime === remInTime) {
-        hasNotifiedTodayIn = true;
-        sendNotification('上班打卡提醒', `已到达预定时间 ${remInTime}，请记得长按打卡记录工时`);
-      }
-    }
-
-    // 2. 下班提醒检测
-    if (settings.reminderOutEnabled && !hasNotifiedTodayOut && (!todayRec.out || !todayRec.in)) {
-      const remOutTime = settings.reminderOutTime || '17:30';
-      if (curTime === remOutTime) {
-        hasNotifiedTodayOut = true;
-        sendNotification('下班打卡提醒', `已到达下班时间 ${remOutTime}，请记得完成今日下班打卡`);
-      }
-    }
-  }
-
   // ---------- 工具 ----------
   const $ = id => document.getElementById(id);
   const pad = n => String(n).padStart(2, '0');
@@ -186,6 +133,9 @@
   const fmtH = min => (min / 60).toFixed(1);
   const mondayOf = d => { const x = new Date(d.getFullYear(), d.getMonth(), d.getDate()); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x; };
   const nowMin = () => { const n = new Date(); return n.getHours() * 60 + n.getMinutes() + n.getSeconds() / 60; };
+
+  // 当前生效的记录日期
+  const activeKey = () => keyOf(new Date());
 
   // 原始跨度（分钟），跨零点按次日
   const rawSpan = r => {
@@ -226,8 +176,318 @@
     }, durationMs);
   }
 
-  // 当前生效的记录日期
-  const activeKey = () => keyOf(new Date());
+  // ---------- 打卡提醒与通知服务 (Android 原生本地通知 + Web 降级) ----------
+  let hasNotifiedTodayIn = false;
+  let hasNotifiedTodayOut = false;
+  let lastCheckedDateKey = '';
+  let nativeNotificationInitialized = false;
+
+  function getLocalNotificationsPlugin() {
+    if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.LocalNotifications) {
+      return window.Capacitor.Plugins.LocalNotifications;
+    }
+    if (window.Capacitor && typeof window.Capacitor.registerPlugin === 'function') {
+      try {
+        return window.Capacitor.registerPlugin('LocalNotifications');
+      } catch (e) {}
+    }
+    return null;
+  }
+
+  function isWorkDay(dateKey) {
+    if (typeof window.dayKind === 'function') {
+      try {
+        const res = window.dayKind(dateKey);
+        return !!(res && res.kind === 'work');
+      } catch (e) {}
+    }
+    const [y, m, d] = dateKey.split('-').map(Number);
+    const wd = new Date(y, m - 1, d).getDay();
+    return wd >= 1 && wd <= 5;
+  }
+
+  async function requestNotificationPermission() {
+    if (isNativePlatform()) {
+      const plugin = getLocalNotificationsPlugin();
+      if (plugin) {
+        try {
+          const status = await plugin.checkPermissions();
+          if (status.display === 'granted') return true;
+          const req = await plugin.requestPermissions();
+          return req.display === 'granted';
+        } catch (e) {
+          console.error('[Notification] 原生通知权限检查异常:', e);
+        }
+      }
+    }
+    if (!('Notification' in window)) return false;
+    if (Notification.permission === 'granted') return true;
+    if (Notification.permission !== 'denied') {
+      const res = await Notification.requestPermission();
+      return res === 'granted';
+    }
+    return false;
+  }
+
+  async function sendNotification(title, body) {
+    Haptic.warn();
+    if (!('Notification' in window)) return;
+    if (Notification.permission !== 'granted') return;
+    if (navigator.serviceWorker && navigator.serviceWorker.ready) {
+      try {
+        const reg = await navigator.serviceWorker.ready;
+        reg.showNotification(title, {
+          body,
+          icon: 'icons/icon-192.png',
+          badge: 'icons/icon-192.png',
+          tag: 'daka-reminder',
+          renotify: true
+        });
+        return;
+      } catch {}
+    }
+    try {
+      new Notification(title, { body, icon: 'icons/icon-192.png' });
+    } catch {}
+  }
+
+  async function initNativeNotificationChannels() {
+    if (!isNativePlatform()) return;
+    const plugin = getLocalNotificationsPlugin();
+    if (!plugin || nativeNotificationInitialized) return;
+
+    try {
+      // 1. 创建标准级别通知渠道 (IMPORTANCE_DEFAULT: 3，有提示音与状态栏图标，无全屏浮窗打扰)
+      if (typeof plugin.createChannel === 'function') {
+        await plugin.createChannel({
+          id: 'daka_reminders',
+          name: '工时打卡提醒',
+          description: '工作日上下班与打卡防漏提醒通知',
+          importance: 3,
+          visibility: 1,
+          vibration: true,
+          lights: false
+        });
+      }
+
+      // 2. 注册统一精简快捷操作按钮：一键打卡、10分钟后再提醒
+      if (typeof plugin.registerActionTypes === 'function') {
+        await plugin.registerActionTypes({
+          types: [
+            {
+              id: 'DAKA_ACTIONS',
+              actions: [
+                {
+                  id: 'punch_now',
+                  title: '一键打卡'
+                },
+                {
+                  id: 'snooze_10',
+                  title: '10分钟后再提醒'
+                }
+              ]
+            }
+          ]
+        });
+      }
+
+      // 3. 注册快捷按钮点击监听器
+      if (typeof plugin.addListener === 'function') {
+        plugin.addListener('localNotificationActionPerformed', async notificationAction => {
+          const actionId = notificationAction.actionId;
+          const extra = notificationAction.notification?.extra || {};
+          const remindType = extra.type || 'in';
+
+          if (actionId === 'punch_now') {
+            handleNotificationOneClickPunch(remindType);
+          } else if (actionId === 'snooze_10') {
+            handleNotificationSnooze(remindType);
+          } else if (actionId === 'tap') {
+            toast(remindType === 'in' ? '请记录今日上班工时' : '请记录今日下班工时');
+          }
+        });
+      }
+
+      nativeNotificationInitialized = true;
+    } catch (e) {
+      console.error('[Notification] 原生通知渠道初始化失败:', e);
+    }
+  }
+
+  // 通知栏【一键打卡】响应处理
+  function handleNotificationOneClickPunch(type) {
+    const now = new Date();
+    const k = keyOf(now);
+    const nowTime = hhmm(now);
+    const r = log[k] || (log[k] = {});
+    const defaultLunch = (settings.routineLunch && settings.routineLunch.span) ? settings.routineLunch.span : (settings.lunch || 60);
+
+    if (type === 'in') {
+      r.in = nowTime;
+      if (r.lunch == null) r.lunch = defaultLunch;
+      saveLog();
+      Haptic.success();
+      renderAll();
+      toast(`已完成今日上班打卡: ${nowTime}`);
+    } else {
+      r.out = nowTime;
+      if (!r.in) {
+        r.in = settings.routineIn || '08:30';
+      }
+      if (r.lunch == null) r.lunch = defaultLunch;
+      saveLog();
+      Haptic.success();
+      renderAll();
+      toast(`已完成今日下班打卡: ${nowTime}`);
+    }
+
+    if (typeof autoSyncByStorageMode === 'function') {
+      autoSyncByStorageMode();
+    }
+    scheduleNotificationTasks();
+  }
+
+  // 通知栏【10分钟后再提醒】延时响应处理
+  async function handleNotificationSnooze(type) {
+    if (!isNativePlatform()) return;
+    const plugin = getLocalNotificationsPlugin();
+    if (!plugin) return;
+
+    try {
+      const snoozeTime = new Date(Date.now() + 10 * 60 * 1000);
+      const snoozeId = 20000 + (type === 'in' ? 1 : 2);
+      await plugin.schedule({
+        notifications: [
+          {
+            id: snoozeId,
+            title: type === 'in' ? '上班打卡延时提醒' : '下班打卡延时提醒',
+            body: `距离上次打卡提醒已过去 10 分钟，请记得及时完成${type === 'in' ? '上班' : '下班'}打卡`,
+            schedule: { at: snoozeTime, allowWhileIdle: true },
+            channelId: 'daka_reminders',
+            actionTypeId: 'DAKA_ACTIONS',
+            extra: { type, isSnooze: true }
+          }
+        ]
+      });
+      Haptic.tick();
+      toast('已设置 10 分钟后再次提醒');
+    } catch (e) {
+      console.error('[Notification] 延时提醒设置失败:', e);
+    }
+  }
+
+  // 核心调度器：智能工作日识别、提前打卡防打扰与原生准时响铃
+  async function scheduleNotificationTasks() {
+    if (!isNativePlatform()) return;
+    const plugin = getLocalNotificationsPlugin();
+    if (!plugin) return;
+
+    await initNativeNotificationChannels();
+
+    try {
+      const pending = await plugin.getPending();
+      if (pending && pending.notifications && pending.notifications.length > 0) {
+        const toCancel = pending.notifications
+          .filter(n => n.id >= 10000 && n.id < 20000)
+          .map(n => ({ id: n.id }));
+        if (toCancel.length > 0) {
+          await plugin.cancel({ notifications: toCancel });
+        }
+      }
+
+      const now = new Date();
+      const notificationsToSchedule = [];
+
+      for (let dayOffset = 0; dayOffset < 14; dayOffset++) {
+        const targetDate = addDays(now, dayOffset);
+        const k = keyOf(targetDate);
+
+        if (!isWorkDay(k)) continue;
+
+        const dayRecord = log[k] || {};
+
+        // 上班打卡提醒
+        if (settings.reminderInEnabled) {
+          const remInTime = settings.reminderInTime || '08:20';
+          const [inH, inM] = remInTime.split(':').map(Number);
+          const inDateTime = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate(), inH, inM, 0);
+
+          if (inDateTime.getTime() > now.getTime() && !dayRecord.in) {
+            notificationsToSchedule.push({
+              id: 10000 + dayOffset * 2 + 1,
+              title: '上班打卡提醒',
+              body: `已到达预定时间 ${remInTime}，请记得长按打卡记录工时`,
+              schedule: { at: inDateTime, allowWhileIdle: true },
+              channelId: 'daka_reminders',
+              actionTypeId: 'DAKA_ACTIONS',
+              extra: { type: 'in', dateKey: k }
+            });
+          }
+        }
+
+        // 下班打卡提醒
+        if (settings.reminderOutEnabled) {
+          const remOutTime = settings.reminderOutTime || '17:30';
+          const [outH, outM] = remOutTime.split(':').map(Number);
+          const outDateTime = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate(), outH, outM, 0);
+
+          if (outDateTime.getTime() > now.getTime() && !dayRecord.out) {
+            notificationsToSchedule.push({
+              id: 10000 + dayOffset * 2 + 2,
+              title: '下班打卡提醒',
+              body: `已到达下班时间 ${remOutTime}，请记得完成今日下班打卡`,
+              schedule: { at: outDateTime, allowWhileIdle: true },
+              channelId: 'daka_reminders',
+              actionTypeId: 'DAKA_ACTIONS',
+              extra: { type: 'out', dateKey: k }
+            });
+          }
+        }
+      }
+
+      if (notificationsToSchedule.length > 0) {
+        await plugin.schedule({ notifications: notificationsToSchedule });
+      }
+    } catch (e) {
+      console.error('[Notification] 原生打卡提醒排期失败:', e);
+    }
+  }
+
+  // Web 端降级轮询检测（当非原生或在普通网页环境下运行时生效）
+  function checkReminders() {
+    if (isNativePlatform()) return;
+
+    const now = new Date();
+    const k = keyOf(now);
+    if (k !== lastCheckedDateKey) {
+      lastCheckedDateKey = k;
+      hasNotifiedTodayIn = false;
+      hasNotifiedTodayOut = false;
+    }
+
+    if (!isWorkDay(k)) return;
+
+    const curTime = hhmm(now);
+    const todayRec = log[k] || {};
+
+    if (settings.reminderInEnabled && !hasNotifiedTodayIn && !todayRec.in) {
+      const remInTime = settings.reminderInTime || '08:20';
+      if (curTime === remInTime) {
+        hasNotifiedTodayIn = true;
+        sendNotification('上班打卡提醒', `已到达预定时间 ${remInTime}，请记得长按打卡记录工时`);
+      }
+    }
+
+    if (settings.reminderOutEnabled && !hasNotifiedTodayOut && (!todayRec.out || !todayRec.in)) {
+      const remOutTime = settings.reminderOutTime || '17:30';
+      if (curTime === remOutTime) {
+        hasNotifiedTodayOut = true;
+        sendNotification('下班打卡提醒', `已到达下班时间 ${remOutTime}，请记得完成今日下班打卡`);
+      }
+    }
+  }
+
+
 
   // ---------- 今天视图渲染 ----------
   function renderToday() {
@@ -1078,6 +1338,7 @@
       saveSet();
       Haptic.tick();
       if (settings.reminderInEnabled) await requestNotificationPermission();
+      scheduleNotificationTasks();
     });
   }
   if ($('set-reminder-in-time')) {
@@ -1085,6 +1346,7 @@
       settings.reminderInTime = e.target.value || '08:20';
       saveSet();
       Haptic.tick();
+      scheduleNotificationTasks();
     });
   }
   if ($('set-reminder-out')) {
@@ -1093,6 +1355,7 @@
       saveSet();
       Haptic.tick();
       if (settings.reminderOutEnabled) await requestNotificationPermission();
+      scheduleNotificationTasks();
     });
   }
   if ($('set-reminder-out-time')) {
@@ -1100,6 +1363,7 @@
       settings.reminderOutTime = e.target.value || '17:30';
       saveSet();
       Haptic.tick();
+      scheduleNotificationTasks();
     });
   }
   if ($('btn-test-notification')) {
@@ -1107,8 +1371,33 @@
       Haptic.tap();
       const granted = await requestNotificationPermission();
       if (!granted) {
-        toast('请先在浏览器或系统设置中允许通知权限');
+        toast('请先在系统设置中允许通知权限');
         return;
+      }
+      if (isNativePlatform()) {
+        const plugin = getLocalNotificationsPlugin();
+        if (plugin) {
+          await initNativeNotificationChannels();
+          try {
+            await plugin.schedule({
+              notifications: [
+                {
+                  id: 9999,
+                  title: '工时打卡提醒 (测试)',
+                  body: '测试提醒通知已就绪：可在下方尝试一键打卡或稍后提醒',
+                  schedule: { at: new Date(Date.now() + 800), allowWhileIdle: true },
+                  channelId: 'daka_reminders',
+                  actionTypeId: 'DAKA_ACTIONS',
+                  extra: { type: 'in', isTest: true }
+                }
+              ]
+            });
+            toast('已发送原生测试提醒，请下拉通知栏查看');
+            return;
+          } catch (e) {
+            console.error('[Notification] 发送原生测试通知异常:', e);
+          }
+        }
       }
       sendNotification('工时打卡提醒', '测试提醒通知已就绪：到点将提醒您按时打卡');
       toast('已发送测试提醒');
@@ -3099,9 +3388,26 @@
   if (splash) setTimeout(() => { splash.classList.add('out'); setTimeout(() => splash.remove(), 480); }, 800);
   setInterval(renderToday, 30000);
 
-  // 启动打卡提醒与通知轮询（每 25 秒检测）
-  checkReminders();
-  setInterval(checkReminders, 25000);
+  // 启动打卡提醒与通知调度系统
+  if (isNativePlatform()) {
+    initNativeNotificationChannels().then(() => {
+      scheduleNotificationTasks();
+    });
+  } else {
+    checkReminders();
+    setInterval(checkReminders, 25000);
+  }
+
+  // 页面前后台切换唤醒时自动检测与更新排期
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      if (isNativePlatform()) {
+        scheduleNotificationTasksDebounced();
+      } else {
+        checkReminders();
+      }
+    }
+  });
 
   // URL 参数支持直达指定视图与面板（便于调试与外部捷径）
   const urlParams = new URLSearchParams(window.location.search);
@@ -3162,7 +3468,7 @@
   }
 
   // ---------- 应用版本与云端更新控制器（首页浮窗与即时重载） ----------
-  const APP_VERSION = '1.0.6';
+  const APP_VERSION = '1.0.7';
   const CLOUD_PAGES_ORIGIN = 'https://daka-f3o.pages.dev';
   let availableUpdate = null;
 

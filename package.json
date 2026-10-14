@@ -1,6 +1,6 @@
 {
   "name": "daka-worklog",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "private": true,
   "description": "极简工时打卡与多版式薪资核算应用",
   "scripts": {
@@ -17,6 +17,7 @@
     "wrangler": "^4.149.0"
   },
   "dependencies": {
-    "@capacitor/core": "^8.5.3"
+    "@capacitor/core": "^8.5.3",
+    "@capacitor/local-notifications": "^8.3.1"
   }
 }
