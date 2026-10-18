@@ -27,8 +27,8 @@
     // 1. 测试连接
     async testConnection(config) {
       const { url, user, pass } = config;
-      if (!url || !url.startsWith('http')) {
-        return { ok: false, message: '请输入以 http 或 https 开头的网盘地址' };
+      if (!url || !url.startsWith('https://')) {
+        return { ok: false, message: '请输入以 https:// 开头的网盘地址' };
       }
 
       const auth = getAuthHeader(user, pass);
@@ -81,6 +81,7 @@
     async uploadBackup(config, payload) {
       const { url, user, pass, filename = 'worklog-backup.json' } = config;
       if (!url) return { ok: false, message: '未配置 WebDAV 地址' };
+      if (!url.startsWith('https://')) return { ok: false, message: 'WebDAV 地址必须使用 https' };
 
       const fileUrl = normalizeUrl(url, filename);
       const auth = getAuthHeader(user, pass);
@@ -132,6 +133,7 @@
     async downloadBackup(config) {
       const { url, user, pass, filename = 'worklog-backup.json' } = config;
       if (!url) return { ok: false, message: '未配置 WebDAV 地址' };
+      if (!url.startsWith('https://')) return { ok: false, message: 'WebDAV 地址必须使用 https' };
 
       const fileUrl = normalizeUrl(url, filename);
       const auth = getAuthHeader(user, pass);

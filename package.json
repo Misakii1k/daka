@@ -6,9 +6,17 @@
   "scripts": {
     "dev": "http-server -p 5173 -c-1 .",
     "check:emoji": "node verify_zero_emoji.js",
-    "test": "node verify_export_and_salary.js",
-    "deploy": "wrangler pages deploy . --project-name daka",
-    "build:apk": "npx cap sync android && cd android && gradlew.bat assembleDebug"
+    "check:refs": "node scripts/check-refs.mjs",
+    "check:versions": "node scripts/check-versions.mjs",
+    "check:www": "node scripts/check-www.mjs",
+    "test": "node --test tests/*.test.js && node verify_export_and_salary.js",
+    "test:legacy": "node verify_export_and_salary.js",
+    "build:web": "node scripts/build-web.mjs",
+    "build:site": "node scripts/build-site.mjs",
+    "build:apk": "npm run build:web && npx cap sync android && cd android && gradlew.bat assembleDebug",
+    "version:bump": "node scripts/bump-version.mjs",
+    "deploy": "npm run build:site && wrangler pages deploy .deploy --project-name daka",
+    "deploy:legacy": "wrangler pages deploy . --project-name daka"
   },
   "devDependencies": {
     "@capacitor/android": "^8.5.3",

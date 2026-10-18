@@ -19,6 +19,7 @@ Thumbs.db
 
 # 产物与缓存
 dist/
+.deploy/
 tmp/
 scratch/
 tmp_artifacts/

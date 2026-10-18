@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS worklog_records (
   lunch_end TEXT,
   note TEXT,
   updated_at INTEGER NOT NULL,
+  deleted_at INTEGER NOT NULL DEFAULT 0,
   PRIMARY KEY (user_id, date_key)
 );
 

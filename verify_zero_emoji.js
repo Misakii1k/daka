@@ -5,12 +5,22 @@ const path = require('path');
 
 const targetFiles = [
   'app.js',
+  'core.js',
   'exporter.js',
   'style.css',
   'index.html',
+  'sw.js',
   'webdav.js',
   'holidays.js'
 ];
+
+for (const dir of ['scripts', 'tests']) {
+  const full = path.join(__dirname, dir);
+  if (!fs.existsSync(full)) continue;
+  for (const file of fs.readdirSync(full)) {
+    if (file.endsWith('.js') || file.endsWith('.mjs')) targetFiles.push(`${dir}/${file}`);
+  }
+}
 
 // 严格的 Emoji 匹配正则，涵盖所有标准 Emoji 区域与符号
 const emojiRegex = /(?:\ud83c[\udf00-\udfff]|\ud83d[\ud000-\ude4f\ude80-\udfff]|\ud83e[\udd00-\udfff]|[\u2600-\u26ff]|[\u2700-\u27bf])/g;

@@ -3,6 +3,21 @@
 (() => {
   'use strict';
 
+  // 文件名净化与 CSV 单元格防注入（与 core.js 保持同样的安全语义）
+  function safeName(value, fallback) {
+    const cleaned = String(value == null ? '' : value)
+      .replace(/[\\/:*?"<>|\u0000-\u001f]/g, '_')
+      .replace(/^\.+/, '')
+      .trim();
+    return (cleaned || fallback || 'export').slice(0, 80);
+  }
+
+  function csvCell(value) {
+    let text = value == null ? '' : String(value);
+    if (/^[=+\-@\t\r]/.test(text)) text = "'" + text;
+    return '"' + text.replace(/"/g, '""') + '"';
+  }
+
   // 人民币金额大写转换函数
   function toChineseCurrency(n) {
     const num = Math.max(0, Number(n) || 0);
@@ -1082,77 +1097,110 @@
     return null;
   }
 
-  // 生成标准 CSV 行数据
+  // 生成标准 CSV 行数据（所有动态值统一走 csvCell，防公式注入与引号破坏）
   function buildCsvLines(reportData) {
     const lines = [];
-    lines.push(`"工时与薪资结算单"`);
-    lines.push(`"核算对象","${reportData.userName}","打印时间","${reportData.printTimeStr}"`);
-    lines.push(`"计薪周期","${reportData.periodStr}","单号","${reportData.receiptNo}"`);
-    lines.push(`"时薪单价","￥${reportData.wageRate.toFixed(2)} 元/小时","标准日工时","${reportData.stdHours} 小时"`);
-    lines.push(`"出勤天数","${reportData.attendedDays} 天","总计工时","${reportData.totalHours} 小时"`);
-    lines.push(`"应发实付金额","￥${reportData.totalSalary.toFixed(2)}","大写金额","${reportData.totalSalaryCn}"`);
+    lines.push([csvCell('工时与薪资结算单')].join(','));
+    lines.push([csvCell('核算对象'), csvCell(reportData.userName), csvCell('打印时间'), csvCell(reportData.printTimeStr)].join(','));
+    lines.push([csvCell('计薪周期'), csvCell(reportData.periodStr), csvCell('单号'), csvCell(reportData.receiptNo)].join(','));
+    lines.push([csvCell('时薪单价'), csvCell(`￥${reportData.wageRate.toFixed(2)} 元/小时`), csvCell('标准日工时'), csvCell(`${reportData.stdHours} 小时`)].join(','));
+    lines.push([csvCell('出勤天数'), csvCell(`${reportData.attendedDays} 天`), csvCell('总计工时'), csvCell(`${reportData.totalHours} 小时`)].join(','));
+    lines.push([csvCell('应发实付金额'), csvCell(`￥${reportData.totalSalary.toFixed(2)}`), csvCell('大写金额'), csvCell(reportData.totalSalaryCn)].join(','));
     lines.push('');
-    lines.push(`"日期","星期","上班时间","下班时间","扣除午休(分钟)","计入工时(小时)","当日薪资(元)","考勤状态","备注"`);
+    lines.push(['日期', '星期', '上班时间', '下班时间', '扣除午休(分钟)', '计入工时(小时)', '当日薪资(元)', '考勤状态', '备注'].map(csvCell).join(','));
 
     reportData.dailyItems.forEach(item => {
       const row = [
-        `"${item.dateKey}"`,
-        `"${item.dayOfWeek}"`,
-        `"${item.inTime}"`,
-        `"${item.outTime}"`,
-        `"${item.hasRecord ? item.lunchSpan : 0}"`,
-        `"${item.workedHours.toFixed(1)}"`,
-        `"${item.daySalary.toFixed(2)}"`,
-        `"${item.status}"`,
-        `"${(item.note || '').replace(/"/g, '""')}"`
+        csvCell(item.dateKey),
+        csvCell(item.dayOfWeek),
+        csvCell(item.inTime),
+        csvCell(item.outTime),
+        csvCell(item.hasRecord ? item.lunchSpan : 0),
+        csvCell(item.workedHours.toFixed(1)),
+        csvCell(item.daySalary.toFixed(2)),
+        csvCell(item.status),
+        csvCell(item.note || '')
       ];
       lines.push(row.join(','));
     });
 
     lines.push('');
-    lines.push(`"合计","","","","","${reportData.totalHours.toFixed(1)}","${reportData.totalSalary.toFixed(2)}","共出勤 ${reportData.attendedDays} 天",""`);
+    lines.push([
+      csvCell('合计'), csvCell(''), csvCell(''), csvCell(''), csvCell(''),
+      csvCell(reportData.totalHours.toFixed(1)),
+      csvCell(reportData.totalSalary.toFixed(2)),
+      csvCell(`共出勤 ${reportData.attendedDays} 天`),
+      csvCell('')
+    ].join(','));
     return lines;
   }
 
-  // 生成并下载高清长图（支持原生相册写入、后端文件流与本地即时保存）
-  function exportLongImage(reportData, themeId = 'receipt') {
+  // 生成并下载高清长图（原生相册写入优先，Web 端走 Blob 下载）
+  async function exportLongImage(reportData, themeId = 'receipt') {
     const theme = ThemeRegistry[themeId] || ThemeRegistry.receipt;
     const canvas = theme.renderCanvas(reportData);
     const themeLabel = theme.name;
-    const filename = `工时结算-${themeLabel}-${reportData.year}年${reportData.month}月-${reportData.userName}.png`;
-    const dataUrl = canvas.toDataURL ? canvas.toDataURL('image/png') : '';
+    const filename = `工时结算-${safeName(themeLabel, '版式')}-${reportData.year}年${reportData.month}月-${safeName(reportData.userName, '本人')}.png`;
 
-    // 异步尝试原生相册写入与后端支持
-    (async () => {
-      const nativePlugin = getFileExportPlugin();
-      if (nativePlugin && typeof nativePlugin.saveImageToGallery === 'function' && dataUrl) {
-        try {
-          await nativePlugin.saveImageToGallery({
-            base64: dataUrl,
-            filename: filename
-          });
-        } catch (e) {}
-      } else if (typeof fetch === 'function' && typeof window !== 'undefined' && window.location && dataUrl) {
-        try {
-          await fetch('./api/export', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'export_image', imageBase64: dataUrl, filename })
-          });
-        } catch (e) {}
+    const nativePlugin = getFileExportPlugin();
+    if (nativePlugin && typeof nativePlugin.saveImageToGallery === 'function') {
+      try {
+        const dataUrl = canvas.toDataURL ? canvas.toDataURL('image/png') : '';
+        if (!dataUrl) return { ok: false, message: '当前环境不支持生成图片' };
+        await nativePlugin.saveImageToGallery({ base64: dataUrl, filename: filename });
+        return { ok: true, message: '已保存到相册' };
+      } catch (e) {
+        return { ok: false, message: (e && e.message) || '保存到相册失败' };
       }
-    })();
+    }
 
+    if (!canvas.toBlob) return { ok: false, message: '当前浏览器不支持导出图片' };
     return new Promise(resolve => {
-      if (!canvas.toBlob) {
-        resolve(true);
-        return;
-      }
       canvas.toBlob(blob => {
         if (!blob) {
-          resolve(false);
+          resolve({ ok: false, message: '长图生成失败' });
           return;
         }
+        try {
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          setTimeout(() => URL.revokeObjectURL(url), 2000);
+          resolve({ ok: true, message: '已开始下载' });
+        } catch (e) {
+          resolve({ ok: false, message: '长图下载失败' });
+        }
+      }, 'image/png');
+    });
+  }
+
+  // 生成并下载标准 Excel / CSV 表格（原生分享优先，Web 端走 Blob 下载）
+  async function exportExcelCsv(reportData) {
+    const filename = `工时薪资明细-${reportData.year}年${reportData.month}月-${safeName(reportData.userName, '本人')}.csv`;
+    const lines = buildCsvLines(reportData);
+    const csvContent = '\uFEFF' + lines.join('\r\n');
+
+    const nativePlugin = getFileExportPlugin();
+    if (nativePlugin && typeof nativePlugin.saveAndShareFile === 'function') {
+      try {
+        await nativePlugin.saveAndShareFile({
+          content: csvContent,
+          filename: filename,
+          mimeType: 'text/csv'
+        });
+        return { ok: true, message: '已打开分享面板' };
+      } catch (e) {
+        return { ok: false, message: (e && e.message) || '表格导出失败' };
+      }
+    }
+
+    if (typeof Blob !== 'undefined' && typeof URL !== 'undefined' && typeof document !== 'undefined') {
+      try {
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
@@ -1161,53 +1209,13 @@
         a.click();
         a.remove();
         setTimeout(() => URL.revokeObjectURL(url), 2000);
-        resolve(true);
-      }, 'image/png');
-    });
-  }
-
-  // 生成并下载标准 Excel / CSV 表格（支持原生环境分享、后端流式端点与本地即时导出）
-  function exportExcelCsv(reportData) {
-    const filename = `工时薪资明细-${reportData.year}年${reportData.month}月-${reportData.userName}.csv`;
-    const lines = buildCsvLines(reportData);
-    const csvContent = '\uFEFF' + lines.join('\r\n');
-
-    // 1. 本地/Web 即时 Blob 触发
-    if (typeof Blob !== 'undefined' && typeof URL !== 'undefined' && typeof document !== 'undefined') {
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 2000);
+        return { ok: true, message: '已开始下载' };
+      } catch (e) {
+        return { ok: false, message: '表格下载失败' };
+      }
     }
 
-    // 2. 异步尝试移动端原生分享与后端导出支持
-    (async () => {
-      const nativePlugin = getFileExportPlugin();
-      if (nativePlugin && typeof nativePlugin.saveAndShareFile === 'function') {
-        try {
-          await nativePlugin.saveAndShareFile({
-            content: csvContent,
-            filename: filename,
-            mimeType: 'text/csv'
-          });
-        } catch (e) {}
-      } else if (typeof fetch === 'function' && typeof window !== 'undefined' && window.location) {
-        try {
-          await fetch('./api/export', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'export_csv', reportData, filename })
-          });
-        } catch (e) {}
-      }
-    })();
-
-    return true;
+    return { ok: false, message: '当前环境不支持导出表格' };
   }
 
   // 暴露到全局

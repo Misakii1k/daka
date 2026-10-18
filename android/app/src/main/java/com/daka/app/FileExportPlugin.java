@@ -39,6 +39,7 @@ public class FileExportPlugin extends Plugin {
     public void saveImageToGallery(PluginCall call) {
         String base64Data = call.getString("base64");
         String filename = call.getString("filename", "daka-export-" + System.currentTimeMillis() + ".png");
+        filename = new File(filename).getName();
 
         if (base64Data == null || base64Data.isEmpty()) {
             call.reject("缺少图像 Base64 数据");
@@ -104,6 +105,7 @@ public class FileExportPlugin extends Plugin {
     public void saveAndShareFile(PluginCall call) {
         String content = call.getString("content");
         String filename = call.getString("filename", "daka-export-" + System.currentTimeMillis() + ".csv");
+        filename = new File(filename).getName();
         String mimeType = call.getString("mimeType", "text/csv");
 
         if (content == null) {

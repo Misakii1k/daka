@@ -1,14 +1,26 @@
 // Cloudflare Pages Functions - 打卡提醒通知与订阅端点
+// 默认关闭；当前客户端未使用 Web Push，开启前请先实现真实的推送发送逻辑。
 // 严格规范：绝不使用任何 emoji
 
-import { Env, getUserId, handleOptions, jsonResponse } from './_shared';
+import {
+  Env,
+  corsHeaders,
+  getUserId,
+  handleOptions,
+  isEnabled,
+  jsonResponse,
+  notFound,
+  readJson
+} from './_shared';
 
-export async function onRequestOptions(): Promise<Response> {
-  return handleOptions();
+export async function onRequestOptions(context: { request: Request; env: Env }): Promise<Response> {
+  return handleOptions(context.request, context.env);
 }
 
 export async function onRequestGet(context: { request: Request; env: Env }): Promise<Response> {
   const { request, env } = context;
+  if (!isEnabled(env, 'NOTIFY_ENABLED')) return notFound();
+  const cors = corsHeaders(request, env);
   const userId = getUserId(request);
 
   if (!env.DB) {
@@ -16,10 +28,10 @@ export async function onRequestGet(context: { request: Request; env: Env }): Pro
       ok: true,
       reminders: {
         in: { enabled: true, time: '08:20', text: '该准备上班打卡了' },
-        out: { enabled: true, time: '17:30', text: '下班时间到了，记得打卡' },
+        out: { enabled: true, time: '17:30', text: '下班时间到了，记得打卡' }
       },
-      offlineNotice: true,
-    });
+      offlineNotice: true
+    }, 200, cors);
   }
 
   try {
@@ -42,26 +54,28 @@ export async function onRequestGet(context: { request: Request; env: Env }): Pro
           text: '下班时间到了，记得打卡'
         }
       }
-    });
+    }, 200, cors);
   } catch (err: any) {
-    return jsonResponse({ ok: false, error: err.message }, 500);
+    return jsonResponse({ ok: false, error: err.message }, 500, cors);
   }
 }
 
 export async function onRequestPost(context: { request: Request; env: Env }): Promise<Response> {
   const { request, env } = context;
+  if (!isEnabled(env, 'NOTIFY_ENABLED')) return notFound();
+  const cors = corsHeaders(request, env);
   const userId = getUserId(request);
 
   let body: any;
   try {
-    body = await request.json();
-  } catch {
-    return jsonResponse({ ok: false, error: '非法的 JSON 请求体' }, 400);
+    body = await readJson(request);
+  } catch (err: any) {
+    return jsonResponse({ ok: false, error: err.message || '非法的 JSON 请求体' }, 400, cors);
   }
 
-  const { subscription } = body;
+  const { subscription } = body || {};
   if (!subscription || !subscription.endpoint) {
-    return jsonResponse({ ok: false, error: '缺少有效的推送订阅凭证' }, 400);
+    return jsonResponse({ ok: false, error: '缺少有效的推送订阅凭证' }, 400, cors);
   }
 
   if (env.DB) {
@@ -84,7 +98,7 @@ export async function onRequestPost(context: { request: Request; env: Env }): Pr
         now
       ).run();
     } catch (err: any) {
-      return jsonResponse({ ok: false, error: '保存订阅失败: ' + err.message }, 500);
+      return jsonResponse({ ok: false, error: '保存订阅失败: ' + err.message }, 500, cors);
     }
   }
 
@@ -92,5 +106,5 @@ export async function onRequestPost(context: { request: Request; env: Env }): Pr
     ok: true,
     message: '推送通知订阅凭证已成功接收',
     savedAt: Date.now()
-  });
+  }, 200, cors);
 }

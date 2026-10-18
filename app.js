@@ -2,10 +2,40 @@
   'use strict';
 
   // ---------- 存储 ----------
+  const CORE = window.WorklogCore;
+  if (!CORE) {
+    console.error('[App] core.js 未加载，应用无法初始化');
+    return;
+  }
   const KEY_LOG = 'worklog';
+  const KEY_TOMB = 'worklog-tombstones';
   const KEY_SET = 'worklog-settings';
-  const load = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) || d; } catch { return d; } };
-  let log = load(KEY_LOG, {});
+  const KEY_BAK = 'worklog-bak';
+  const KEY_META = 'worklog-meta';
+
+  let storageCorrupt = false;
+  let storageQuotaWarned = false;
+  let backupWritten = false;
+
+  const load = (k, d) => {
+    let raw = null;
+    try { raw = localStorage.getItem(k); } catch { return d; }
+    if (!raw) return d;
+    try {
+      const parsed = JSON.parse(raw);
+      return parsed == null ? d : parsed;
+    } catch {
+      storageCorrupt = true;
+      try { localStorage.setItem(`${k}-corrupt-${Date.now()}`, raw); } catch {}
+      return d;
+    }
+  };
+
+  const migrated = CORE.migrateState(load(KEY_LOG, {}), load(KEY_TOMB, {}));
+  let log = migrated.log;
+  let tombstones = migrated.tombstones;
+  let meta = load(KEY_META, {});
+  if (!CORE.isPlainObject(meta)) meta = {};
   const HW_SPEED_MS = {
     instant: 100,
     fast: 180,
@@ -30,6 +60,8 @@
     reminderOutTime: '17:30',
     cloudUserId: '',
     storageMode: 'local',
+    syncEnabled: false,
+    autoCloudSync: false,
     webdav: {
       url: '',
       user: '',
@@ -55,14 +87,63 @@
       }
     }, 120);
   };
+
+  const persistState = () => {
+    if (!backupWritten) {
+      try {
+        const current = localStorage.getItem(KEY_LOG);
+        if (current) localStorage.setItem(KEY_BAK, current);
+      } catch {}
+      backupWritten = true;
+    }
+    try {
+      localStorage.setItem(KEY_LOG, JSON.stringify(log));
+      localStorage.setItem(KEY_TOMB, JSON.stringify(tombstones));
+      meta.lastSavedAt = Date.now();
+      localStorage.setItem(KEY_META, JSON.stringify(meta));
+    } catch (e) {
+      if (!storageQuotaWarned) {
+        storageQuotaWarned = true;
+        setTimeout(() => { if (typeof toast === 'function') toast('存储空间不足，请先导出备份'); }, 0);
+      }
+      console.error('[Storage] 保存失败:', e);
+    }
+  };
   const saveLog = () => {
-    localStorage.setItem(KEY_LOG, JSON.stringify(log));
+    persistState();
     scheduleNotificationTasksDebounced();
   };
   const saveSet = () => {
-    localStorage.setItem(KEY_SET, JSON.stringify(settings));
+    try {
+      localStorage.setItem(KEY_SET, JSON.stringify(settings));
+    } catch (e) {
+      if (!storageQuotaWarned) {
+        storageQuotaWarned = true;
+        setTimeout(() => { if (typeof toast === 'function') toast('存储空间不足，请先导出备份'); }, 0);
+      }
+      console.error('[Storage] 设置保存失败:', e);
+    }
     scheduleNotificationTasksDebounced();
   };
+
+  // 统一写入口：任何记录变更都必须经过这里，保证 updatedAt 与墓碑一致。
+  const upsertRecord = (key, patch) => {
+    const record = log[key] || (log[key] = {});
+    Object.assign(record, patch || {});
+    record.updatedAt = Date.now();
+    delete tombstones[key];
+    return record;
+  };
+  const removeRecord = key => {
+    delete log[key];
+    tombstones[key] = Date.now();
+  };
+  const replaceState = state => {
+    log = (state && state.log) || {};
+    tombstones = (state && state.tombstones) || {};
+  };
+
+  if (migrated.changed) persistState();
 
   // ---------- 触感反馈引擎 ----------
   const Haptic = {
@@ -85,6 +166,10 @@
       if (settings.hapticEnabled !== false && navigator.vibrate) {
         try { navigator.vibrate([35, 55, 35]); } catch {}
       }
+    },
+    // 兼容旧调用名，避免再次出现 Haptic.warning is not a function
+    warning() {
+      this.warn();
     }
   };
 
@@ -122,6 +207,7 @@
 
   // ---------- 工具 ----------
   const $ = id => document.getElementById(id);
+  const DEV_MODE = ['localhost', '127.0.0.1'].indexOf(location.hostname) >= 0 || location.protocol === 'file:';
   const pad = n => String(n).padStart(2, '0');
   const WD = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
   const keyOf = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -319,22 +405,22 @@
     const now = new Date();
     const k = keyOf(now);
     const nowTime = hhmm(now);
-    const r = log[k] || (log[k] = {});
+    const existing = log[k] || {};
     const defaultLunch = (settings.routineLunch && settings.routineLunch.span) ? settings.routineLunch.span : (settings.lunch || 60);
+    const lunch = existing.lunch != null ? existing.lunch : defaultLunch;
 
     if (type === 'in') {
-      r.in = nowTime;
-      if (r.lunch == null) r.lunch = defaultLunch;
+      upsertRecord(k, { in: nowTime, lunch });
       saveLog();
       Haptic.success();
       renderAll();
       toast(`已打卡上班：${nowTime}`);
     } else {
-      r.out = nowTime;
-      if (!r.in) {
-        r.in = settings.routineIn || '08:30';
-      }
-      if (r.lunch == null) r.lunch = defaultLunch;
+      upsertRecord(k, {
+        out: nowTime,
+        in: existing.in || settings.routineIn || '08:30',
+        lunch
+      });
       saveLog();
       Haptic.success();
       renderAll();
@@ -612,12 +698,10 @@
       const miss = isMissing(r);
       const lunchInfo = (r.lunch != null ? r.lunch : settings.lunch) || 0;
       const sub = `${r.in || '--:--'} – ${r.out || '--:--'}${lunchInfo ? ` · 休${lunchInfo}分` : ''}`;
-      const note = r.note ? ` · ${escapeHtml(r.note)}` : '';
+      const note = r.note ? ` · ${CORE.escapeHtml(r.note)}` : '';
       return `<button type="button" class="item${miss ? ' miss' : ''}" data-k="${k}"><span>${d.getDate()}日 ${WD[d.getDay()]}<small>${sub}${note}</small></span><b>${miss ? '补卡' : fmtH(worked(r)) + ' h'}</b></button>`;
     }).join('');
   }
-
-  const escapeHtml = s => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
   // 横向滑动推入过渡动效辅助函数
   function triggerSwipeAnim(el, direction) {
@@ -769,18 +853,19 @@
     }
 
     if (!inVal && !outVal && !noteVal) {
-      delete log[editingKey];
+      removeRecord(editingKey);
     } else {
-      const r = log[editingKey] || (log[editingKey] = {});
-      r.in = inVal;
-      r.out = outVal;
-      r.lunch = lunchVal;
-      r.note = noteVal;
+      upsertRecord(editingKey, {
+        in: inVal,
+        out: outVal,
+        lunch: lunchVal,
+        note: noteVal
+      });
     }
     saveLog();
     closeEditSheet();
-    Haptic.success();
     renderAll();
+    Haptic.success();
     toast('已保存');
     autoSyncByStorageMode();
   });
@@ -796,11 +881,11 @@
       isDanger: true
     });
     if (ok) {
-      delete log[editingKey];
+      removeRecord(editingKey);
       saveLog();
       closeEditSheet();
-      Haptic.warning();
       renderAll();
+      Haptic.warn();
       toast('已删除记录');
       autoSyncByStorageMode();
     }
@@ -1474,10 +1559,10 @@
   }
 
   if ($('set-user-id')) {
-    $('set-user-id').value = ensureCloudUserId();
+    $('set-user-id').value = settings.cloudUserId || '';
     $('set-user-id').addEventListener('change', e => {
       let val = e.target.value.trim();
-      if (!val) val = ensureCloudUserId();
+      if (!val) val = settings.cloudUserId || '';
       settings.cloudUserId = val;
       e.target.value = val;
       saveSet();
@@ -1510,9 +1595,10 @@
   }
 
   if ($('set-auto-cloud-sync')) {
-    $('set-auto-cloud-sync').checked = settings.autoCloudSync !== false;
+    $('set-auto-cloud-sync').checked = settings.autoCloudSync === true;
     $('set-auto-cloud-sync').addEventListener('change', e => {
       settings.autoCloudSync = e.target.checked;
+      settings.syncEnabled = e.target.checked;
       saveSet();
       Haptic.tap();
       toast(settings.autoCloudSync ? '已开启自动同步' : '已关闭自动同步');
@@ -1521,60 +1607,55 @@
 
   // 极简一键双向智能合并同步
   async function syncCloudflareBidirectional(silent = false) {
+    if (settings.syncEnabled !== true) {
+      if (!silent) toast('云端同步未开启');
+      return false;
+    }
     const statusEl = $('cloud-sync-status');
     const userId = ensureCloudUserId();
     const url = getCloudSyncUrl();
     if (statusEl) statusEl.textContent = '正在同步...';
     try {
-      // 1. 获取云端已有打卡记录与设置
-      let cloudLog = {};
+      // 1. 获取云端已有打卡记录与墓碑
+      let remote = { log: {}, tombstones: {} };
       try {
         const getRes = await fetch(url, {
           headers: { 'X-User-Id': userId }
         });
         if (getRes.ok) {
           const getData = await getRes.json();
-          if (getData && getData.ok && getData.log) {
-            cloudLog = getData.log;
+          if (getData && getData.ok) {
+            remote = {
+              log: getData.log || {},
+              tombstones: getData.tombstones || {}
+            };
           }
         }
       } catch (e) {
         console.warn('读取云端数据降级:', e);
       }
 
-      // 2. 双向智能合并：最新 updatedAt 为准
-      const mergedLog = Object.assign({}, log);
-      let mergedCount = 0;
-      for (const [d, cRec] of Object.entries(cloudLog)) {
-        if (!mergedLog[d]) {
-          mergedLog[d] = cRec;
-          mergedCount++;
-        } else {
-          const localTime = mergedLog[d].updatedAt || 0;
-          const cloudTime = (cRec && cRec.updatedAt) || 0;
-          if (cloudTime > localTime) {
-            mergedLog[d] = cRec;
-            mergedCount++;
-          }
-        }
-      }
-      log = mergedLog;
+      // 2. 按每条记录的 updatedAt / 墓碑时间双向合并，时间相同保留本地
+      const merged = CORE.mergeState({ log, tombstones }, remote);
+      replaceState(merged);
       saveLog();
       renderAll();
 
-      // 3. 将合并后的完整数据回写到 D1 云端
+      // 3. 将合并后的完整数据回写到 D1 云端（不上传设置与任何凭据）
       const postRes = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'X-User-Id': userId
         },
-        body: JSON.stringify({ log: mergedLog, settings })
+        body: JSON.stringify({ log, tombstones })
       });
       if (postRes.ok) {
         const postData = await postRes.json();
         if (postData && postData.ok) {
-          const total = Object.keys(mergedLog).length;
+          meta.lastSyncAt = Date.now();
+          try { localStorage.setItem(KEY_META, JSON.stringify(meta)); } catch {}
+          const total = Object.keys(log).length;
           const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
           if (statusEl) statusEl.textContent = `已同步 · 共 ${total} 条 · ${timeStr}`;
           if (!silent) {
@@ -1595,6 +1676,10 @@
   }
 
   async function pushToCloudflare(silent = false) {
+    if (settings.syncEnabled !== true) {
+      if (!silent) toast('云端同步未开启');
+      return false;
+    }
     const statusEl = $('cloud-sync-status');
     const userId = ensureCloudUserId();
     const url = getCloudSyncUrl();
@@ -1606,7 +1691,7 @@
           'Content-Type': 'application/json',
           'X-User-Id': userId
         },
-        body: JSON.stringify({ log, settings })
+        body: JSON.stringify({ log, tombstones })
       });
       if (res.ok) {
         const data = await res.json();
@@ -1632,6 +1717,10 @@
   }
 
   async function pullFromCloudflare() {
+    if (settings.syncEnabled !== true) {
+      toast('云端同步未开启');
+      return;
+    }
     const statusEl = $('cloud-sync-status');
     const userId = ensureCloudUserId();
     const url = getCloudSyncUrl();
@@ -1643,16 +1732,18 @@
       if (res.ok) {
         const data = await res.json();
         if (data && data.ok && data.log) {
-          const cloudKeys = Object.keys(data.log);
-          if (cloudKeys.length > 0) {
-            log = Object.assign({}, log, data.log);
-            saveLog();
-            renderAll();
-            if (statusEl) statusEl.textContent = `已拉取 · 共 ${cloudKeys.length} 条`;
-            Haptic.success();
-            toast(`已恢复 ${cloudKeys.length} 条记录`);
-            return;
-          }
+          const merged = CORE.mergeState(
+            { log, tombstones },
+            { log: data.log, tombstones: data.tombstones || {} }
+          );
+          const cloudCount = Object.keys(merged.log).length;
+          replaceState(merged);
+          saveLog();
+          renderAll();
+          if (statusEl) statusEl.textContent = `已拉取 · 共 ${cloudCount} 条`;
+          Haptic.success();
+          toast(`已恢复 ${cloudCount} 条记录`);
+          return;
         }
       }
       if (statusEl) statusEl.textContent = '云端暂无记录';
@@ -1732,10 +1823,11 @@
     if (statusEl) statusEl.textContent = '正在备份...';
     const payload = {
       app: 'worklog',
-      version: 2,
+      version: 3,
       updatedAt: new Date().toISOString(),
       log,
-      settings
+      tombstones,
+      settings: CORE.sanitizeSettingsForExport(settings)
     };
     const res = await window.WebDAVClient.uploadBackup(settings.webdav, payload);
     if (res.ok) {
@@ -1768,7 +1860,8 @@
     const res = await window.WebDAVClient.downloadBackup(settings.webdav);
     if (res.ok && res.data && res.data.log) {
       const cloudKeys = Object.keys(res.data.log);
-      if (cloudKeys.length === 0) {
+      const tombKeys = Object.keys(res.data.tombstones || {});
+      if (cloudKeys.length === 0 && tombKeys.length === 0) {
         if (statusEl) statusEl.textContent = '网盘暂无记录';
         toast('网盘暂无记录');
         return;
@@ -1780,12 +1873,17 @@
         cancelText: '取消'
       });
       if (!ok) return;
-      log = Object.assign({}, log, res.data.log);
+      const merged = CORE.mergeState(
+        { log, tombstones },
+        { log: res.data.log, tombstones: res.data.tombstones || {} }
+      );
+      replaceState(merged);
       saveLog();
       renderAll();
-      if (statusEl) statusEl.textContent = `已恢复 ${cloudKeys.length} 条记录`;
+      const total = Object.keys(merged.log).length;
+      if (statusEl) statusEl.textContent = `已恢复 ${total} 条记录`;
       Haptic.success();
-      toast(`已恢复 ${cloudKeys.length} 条记录`);
+      toast(`已恢复 ${total} 条记录`);
     } else {
       if (statusEl) statusEl.textContent = res.message || '读取失败';
       Haptic.warn();
@@ -1797,9 +1895,10 @@
   if ($('btn-webdav-push')) $('btn-webdav-push').addEventListener('click', () => pushToWebDAV(false));
   if ($('btn-webdav-pull')) $('btn-webdav-pull').addEventListener('click', pullFromWebDAV);
 
-  // 通用同步分发器（打卡后自动根据当前存储模式同步）
+  // 通用同步分发器（只有用户显式开启同步后才会上云）
   function autoSyncByStorageMode() {
-    if (settings.autoCloudSync !== false && (settings.storageMode === 'cloudflare' || settings.cloudUserId)) {
+    if (settings.syncEnabled !== true) return;
+    if (settings.storageMode === 'cloudflare' && settings.autoCloudSync === true) {
       syncCloudflareBidirectional(true);
     } else if (settings.storageMode === 'webdav' && settings.webdav && settings.webdav.url) {
       pushToWebDAV(true);
@@ -1843,7 +1942,15 @@
   });
 
   $('exp').addEventListener('click', () => {
-    const blob = new Blob([JSON.stringify({ app: 'worklog', version: 2, log, settings }, null, 2)], { type: 'application/json' });
+    const payload = {
+      app: 'worklog',
+      version: 3,
+      exportedAt: new Date().toISOString(),
+      log,
+      tombstones,
+      settings: CORE.sanitizeSettingsForExport(settings)
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = `工时备份-${keyOf(new Date())}.json`;
@@ -1852,6 +1959,31 @@
     toast('已导出备份');
   });
 
+  function applyImportedSettingsUI() {
+    const setValue = (id, value) => { const el = $(id); if (el && value != null) el.value = value; };
+    const setChecked = (id, value) => { const el = $(id); if (el && typeof value === 'boolean') el.checked = value; };
+    setValue('set-wage', settings.wage);
+    setValue('set-lunch', settings.lunch);
+    setValue('set-std', settings.std);
+    setValue('set-hw-speed', settings.hwSpeed);
+    setValue('set-celebration', settings.celebrationFx);
+    setValue('set-text-size', settings.textSize);
+    setValue('set-reminder-in-time', settings.reminderInTime);
+    setValue('set-reminder-out-time', settings.reminderOutTime);
+    setValue('set-webdav-url', settings.webdav && settings.webdav.url);
+    setValue('set-webdav-user', settings.webdav && settings.webdav.user);
+    setValue('set-webdav-file', settings.webdav && settings.webdav.filename);
+    setValue('set-user-id', settings.cloudUserId || '');
+    setChecked('set-haptic', settings.hapticEnabled);
+    setChecked('set-reminder-in', settings.reminderInEnabled);
+    setChecked('set-reminder-out', settings.reminderOutEnabled);
+    setChecked('set-auto-cloud-sync', settings.autoCloudSync === true);
+    applyTheme(settings.themeMode || 'system');
+    applyTextSize(settings.textSize || 'standard');
+    updateThemeSegUI(settings.themeMode || 'system');
+    switchStorageMode('local');
+  }
+
   $('imp').addEventListener('change', e => {
     const f = e.target.files[0];
     if (!f) return;
@@ -1859,8 +1991,12 @@
     rd.onload = async () => {
       try {
         const data = JSON.parse(rd.result);
-        if (!data || typeof data.log !== 'object') throw new Error();
-        const n = Object.keys(data.log).length;
+        const result = CORE.validateBackup(data);
+        if (!result.ok) {
+          toast(`导入失败：${result.error}`);
+          return;
+        }
+        const n = Object.keys(result.log).length;
         const ok = await window.customConfirm({
           title: '导入备份',
           message: `导入 ${n} 天记录将覆盖当前本地记录，确定导入吗？`,
@@ -1869,13 +2005,28 @@
           isDanger: true
         });
         if (!ok) return;
-        log = data.log;
-        if (data.settings) settings = Object.assign({ lunch: 60, std: 8, wage: 30, userName: '' }, data.settings);
-        saveLog(); saveSet();
-        $('set-wage').value = settings.wage; $('set-lunch').value = settings.lunch; $('set-std').value = settings.std;
-        renderAll(); toast(`已导入 ${n} 天记录`);
-      } catch { toast('导入失败：文件格式不正确'); }
-      finally { e.target.value = ''; }
+        try {
+          localStorage.setItem('worklog-before-import', JSON.stringify({ log, tombstones, settings }));
+        } catch {}
+        const imported = result.settings || {};
+        if (imported.webdav && settings.webdav) {
+          imported.webdav.pass = settings.webdav.pass || '';
+        }
+        settings = Object.assign(settings, imported);
+        settings.storageMode = 'local';
+        settings.syncEnabled = false;
+        settings.autoCloudSync = false;
+        replaceState({ log: result.log, tombstones: result.tombstones });
+        saveLog();
+        saveSet();
+        applyImportedSettingsUI();
+        renderAll();
+        toast(`已导入 ${n} 天记录`);
+      } catch {
+        toast('导入失败：文件格式不正确');
+      } finally {
+        e.target.value = '';
+      }
     };
     rd.readAsText(f);
   });
@@ -1932,7 +2083,7 @@
       <div class="rec-dash double"></div>
 
       <div class="rec-meta">
-        <div class="rec-meta-row"><span>单号: ${rep.receiptNo}</span><span>核算: ${rep.userName}</span></div>
+        <div class="rec-meta-row"><span>单号: ${rep.receiptNo}</span><span>核算: ${CORE.escapeHtml(rep.userName)}</span></div>
         <div class="rec-meta-row"><span>打印: ${rep.printTimeStr}</span><span>单价: ￥${rep.wageRate.toFixed(2)}/h</span></div>
         <div class="rec-meta-row"><span>周期: ${rep.periodStr}</span><span>标准: ${rep.stdHours}小时/日</span></div>
       </div>
@@ -2012,7 +2163,7 @@
         <div class="tc-sub">TIME RECORDER CARD · STANDARD PUNCH RECORD</div>
         <div class="tc-meta">
           <div>卡号: TC-${rep.year}${String(rep.month).padStart(2, '0')}-${rep.attendedDays}</div>
-          <div style="text-align:right">姓名: ${rep.userName}</div>
+          <div style="text-align:right">姓名: ${CORE.escapeHtml(rep.userName)}</div>
           <div>月份: ${rep.year}年${rep.month}月</div>
           <div style="text-align:right">计薪标准: ￥${rep.wageRate.toFixed(2)}/h</div>
         </div>
@@ -2090,7 +2241,7 @@
           <div style="font-size:10.5px;color:#64748b;">${rep.totalSalaryCn}</div>
         </div>
         <div class="stmt-card" style="display:flex;flex-direction:column;justify-content:center;gap:3px;font-size:11px;">
-          <div><strong>核算对象:</strong> ${rep.userName}</div>
+          <div><strong>核算对象:</strong> ${CORE.escapeHtml(rep.userName)}</div>
           <div><strong>计薪标准:</strong> ￥${rep.wageRate.toFixed(2)} /小时</div>
           <div><strong>有效出勤:</strong> ${rep.attendedDays} 天 (${rep.totalHours.toFixed(1)} 小时)</div>
           <div><strong>日均工时:</strong> ${rep.avgHours.toFixed(1)} 小时 · 加班: ${rep.overHours.toFixed(1)}h</div>
@@ -2144,7 +2295,7 @@
     box.innerHTML = `
       <div class="cal-title-wrap">
         <div class="cal-title">${rep.year}年${rep.month}月 出勤与工时手账</div>
-        <div class="cal-sub">核算对象: ${rep.userName} · 时薪标准: ￥${rep.wageRate.toFixed(2)}/h · 标准日工时: ${rep.stdHours}h</div>
+        <div class="cal-sub">核算对象: ${CORE.escapeHtml(rep.userName)} · 时薪标准: ￥${rep.wageRate.toFixed(2)}/h · 标准日工时: ${rep.stdHours}h</div>
       </div>
 
       <div class="cal-grid">
@@ -2188,7 +2339,7 @@
     box.innerHTML = `
       <div class="memo-tape"></div>
       <div class="memo-title">${rep.month}月工时结算备忘便笺</div>
-      <div class="memo-sub">记账人: ${rep.userName} · 时薪: ￥${rep.wageRate.toFixed(2)}/h · 出勤: ${rep.attendedDays}天</div>
+      <div class="memo-sub">记账人: ${CORE.escapeHtml(rep.userName)} · 时薪: ￥${rep.wageRate.toFixed(2)}/h · 出勤: ${rep.attendedDays}天</div>
 
       <div class="memo-list">
         ${itemsHtml}
@@ -2263,24 +2414,36 @@
     const themeId = ($('em-theme-select') && $('em-theme-select').value) || 'receipt';
     const theme = window.SalaryExporter.ThemeRegistry[themeId] || window.SalaryExporter.ThemeRegistry.receipt;
     const themeLabel = theme ? theme.name : '核算';
+    const btn = $('btn-export-image');
+    if (btn) btn.disabled = true;
     toast(`正在导出${themeLabel}长图...`);
-    const res = await window.SalaryExporter.exportLongImage(currentExportReport, themeId);
-    if (res && res.ok) {
-      toast(res.message || `已保存${themeLabel}长图`);
-    } else {
-      toast('长图生成失败，请重试');
+    try {
+      const res = await window.SalaryExporter.exportLongImage(currentExportReport, themeId);
+      if (res && res.ok) {
+        toast(res.message || `已保存${themeLabel}长图`);
+      } else {
+        toast((res && res.message) || '长图生成失败，请重试');
+      }
+    } finally {
+      if (btn) btn.disabled = false;
     }
   });
 
   // 导出明细表格
   $('btn-export-excel').addEventListener('click', async () => {
     if (!currentExportReport || !window.SalaryExporter) return;
+    const btn = $('btn-export-excel');
+    if (btn) btn.disabled = true;
     toast('正在导出表格...');
-    const res = await window.SalaryExporter.exportExcelCsv(currentExportReport);
-    if (res && res.ok) {
-      toast(res.message || '已导出表格');
-    } else {
-      toast('表格导出失败，请重试');
+    try {
+      const res = await window.SalaryExporter.exportExcelCsv(currentExportReport);
+      if (res && res.ok) {
+        toast(res.message || '已导出表格');
+      } else {
+        toast((res && res.message) || '表格导出失败，请重试');
+      }
+    } finally {
+      if (btn) btn.disabled = false;
     }
   });
 
@@ -2333,7 +2496,7 @@
   function trySetGridDigit(idx, char) {
     const check = validateGridDigit(idx, char, currentGridDigits);
     if (!check.valid) {
-      Haptic.warning();
+      Haptic.warn();
       toast(check.reason);
       if (padInstance) padInstance.clear();
       return false;
@@ -2666,11 +2829,11 @@
         isDanger: true
       });
       if (ok) {
-        delete log[wizKey];
+        removeRecord(wizKey);
         saveLog();
         closeWizard();
-        Haptic.warning();
         renderAll();
+        Haptic.warn();
         toast('已删除记录');
         autoSyncByStorageMode();
       }
@@ -2770,12 +2933,13 @@
       return;
     }
 
-    const r = log[wizKey] || (log[wizKey] = {});
-    r.in = wizData.in;
-    r.out = wizData.out;
-    r.lunch = wizData.lunchSpan != null ? wizData.lunchSpan : settings.lunch;
-    r.lunchStart = $('wiz-rest-start').value;
-    r.lunchEnd = $('wiz-rest-end').value;
+    const r = upsertRecord(wizKey, {
+      in: wizData.in,
+      out: wizData.out,
+      lunch: wizData.lunchSpan != null ? wizData.lunchSpan : settings.lunch,
+      lunchStart: $('wiz-rest-start').value,
+      lunchEnd: $('wiz-rest-end').value
+    });
 
     // 记忆平时的常用午休
     if ($('wiz-save-routine').checked && r.lunch > 0) {
@@ -2843,7 +3007,6 @@
   const chargeFill = $('btn-charge-fill');
   const chargeGlow = $('btn-charge-glow');
   const chargePct = $('hero-charge-pct');
-  const statePill = $('m3-btn-state-pill');
 
   function startPunchProgress(e) {
     if (e.button !== undefined && e.button !== 0) return;
@@ -2854,7 +3017,7 @@
     const r = log[k] || {};
     const hasRecorded = !!(r.in && r.out);
     if (hasRecorded) {
-      Haptic.warning();
+      Haptic.warn();
       toast('今日已打卡，点击“微调”可调整');
       return;
     }
@@ -2963,15 +3126,15 @@
       chargePct.style.color = '';
     }
     const k = activeKey();
-    const r = log[k] || (log[k] = {});
-
     const defaultIn = settings.routineIn || '08:30';
     const defaultOut = settings.routineOut || '17:30';
     const defaultLunch = (settings.routineLunch && settings.routineLunch.span) ? settings.routineLunch.span : (settings.lunch || 60);
-
-    r.in = defaultIn;
-    r.out = defaultOut;
-    r.lunch = defaultLunch;
+    const patch = { in: defaultIn, out: defaultOut, lunch: defaultLunch };
+    if (settings.routineLunch && settings.routineLunch.start && settings.routineLunch.end) {
+      patch.lunchStart = settings.routineLunch.start;
+      patch.lunchEnd = settings.routineLunch.end;
+    }
+    const r = upsertRecord(k, patch);
 
     saveLog();
     if (navigator.vibrate) navigator.vibrate([28, 38, 48]);
@@ -3291,10 +3454,11 @@
 
   $('adjust-save-btn').addEventListener('click', () => {
     const k = activeKey();
-    const r = log[k] || (log[k] = {});
-    r.in = adjData.inTime;
-    r.out = adjData.outTime;
-    r.lunch = adjData.lunchMin;
+    const r = upsertRecord(k, {
+      in: adjData.inTime,
+      out: adjData.outTime,
+      lunch: adjData.lunchMin
+    });
     saveLog();
     renderAll();
     closeAdjustSheet();
@@ -3379,6 +3543,25 @@
 
   renderAll();
 
+  // 本地数据读取异常时给出一次提示（损坏原文已隔离保存）
+  if (storageCorrupt) {
+    setTimeout(() => toast('本地数据读取异常，已保留损坏副本'), 1200);
+  }
+
+  // 多标签页同步：其他标签页写入后重新读取，避免后写覆盖先写
+  window.addEventListener('storage', e => {
+    if (!e.key || [KEY_LOG, KEY_TOMB, KEY_SET].indexOf(e.key) < 0) return;
+    if (e.key === KEY_SET) {
+      settings = Object.assign(settings, load(KEY_SET, {}));
+      applyTheme(settings.themeMode || 'system');
+      applyTextSize(settings.textSize || 'standard');
+    } else {
+      const state = CORE.migrateState(load(KEY_LOG, {}), load(KEY_TOMB, {}));
+      replaceState(state);
+    }
+    renderAll();
+  });
+
   // 初始化 Tab 滑动指示器位置
   requestAnimationFrame(updateTabIndicator);
   window.addEventListener('resize', updateTabIndicator);
@@ -3409,62 +3592,67 @@
     }
   });
 
-  // URL 参数支持直达指定视图与面板（便于调试与外部捷径）
+  // URL 参数支持直达指定视图与面板（仅本地开发/截图环境生效）
   const urlParams = new URLSearchParams(window.location.search);
-  if (urlParams.get('theme')) {
-    applyTheme(urlParams.get('theme'));
-  }
-  if (urlParams.get('view')) {
-    const v = urlParams.get('view');
-    document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x.dataset.go === v));
-    document.querySelectorAll('.view').forEach(el => el.classList.toggle('on', el.dataset.view === v));
-    renderAll();
-  }
-  // 单参数快捷模式 (避免命令行多参数转义问题)
-  const mode = urlParams.get('mode');
-  if (urlParams.get('mock') === '1' && Object.keys(log).length === 0) {
-    log = {
-      '2026-10-01': { in: '08:30', out: '17:30', lunch: 60 },
-      '2026-10-02': { in: '08:25', out: '17:35', lunch: 60 },
-      '2026-10-05': { in: '08:30', out: '18:00', lunch: 60 },
-      '2026-10-06': { in: '08:20', out: '17:30', lunch: 60 },
-      '2026-10-07': { in: '08:30', out: '19:30', lunch: 60 },
-      '2026-10-08': { in: '08:30', out: '17:30', lunch: 60 },
-      '2026-10-09': { in: '08:30', out: '17:30', lunch: 60 }
-    };
-    saveLog();
-  }
+  const mode = DEV_MODE ? urlParams.get('mode') : null;
+  if (DEV_MODE) {
+    if (urlParams.get('theme')) {
+      applyTheme(urlParams.get('theme'));
+    }
+    if (urlParams.get('view')) {
+      const v = urlParams.get('view');
+      document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x.dataset.go === v));
+      document.querySelectorAll('.view').forEach(el => el.classList.toggle('on', el.dataset.view === v));
+      renderAll();
+    }
+    // 单参数快捷模式 (避免命令行多参数转义问题)
+    if (urlParams.get('mock') === '1' && Object.keys(log).length === 0) {
+      const mockLog = {
+        '2026-10-01': { in: '08:30', out: '17:30', lunch: 60 },
+        '2026-10-02': { in: '08:25', out: '17:35', lunch: 60 },
+        '2026-10-05': { in: '08:30', out: '18:00', lunch: 60 },
+        '2026-10-06': { in: '08:20', out: '17:30', lunch: 60 },
+        '2026-10-07': { in: '08:30', out: '19:30', lunch: 60 },
+        '2026-10-08': { in: '08:30', out: '17:30', lunch: 60 },
+        '2026-10-09': { in: '08:30', out: '17:30', lunch: 60 }
+      };
+      Object.keys(mockLog).forEach(k => { mockLog[k].updatedAt = Date.now(); });
+      log = mockLog;
+      saveLog();
+      renderAll();
+    }
 
-  if (mode === 'stats-local') {
-    applyTheme('light');
-    document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x.dataset.go === 'stats'));
-    document.querySelectorAll('.view').forEach(el => el.classList.toggle('on', el.dataset.view === 'stats'));
-    switchStorageMode('local');
-    renderAll();
-  } else if (mode === 'stats-webdav') {
-    applyTheme('light');
-    document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x.dataset.go === 'stats'));
-    document.querySelectorAll('.view').forEach(el => el.classList.toggle('on', el.dataset.view === 'stats'));
-    switchStorageMode('webdav');
-    renderAll();
-  } else if (mode === 'stats-cloudflare') {
-    applyTheme('light');
-    document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x.dataset.go === 'stats'));
-    document.querySelectorAll('.view').forEach(el => el.classList.toggle('on', el.dataset.view === 'stats'));
-    switchStorageMode('cloudflare');
-    renderAll();
-  } else if (mode === 'stats-dark') {
-    applyTheme('dark');
-    document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x.dataset.go === 'stats'));
-    document.querySelectorAll('.view').forEach(el => el.classList.toggle('on', el.dataset.view === 'stats'));
-    switchStorageMode('webdav');
-    renderAll();
-  } else if (mode === 'receipt-modal') {
-    applyTheme('light');
-    setTimeout(openExportModal, 60);
-  } else if (mode === 'receipt-modal-dark') {
-    applyTheme('dark');
-    setTimeout(openExportModal, 60);
+    if (mode === 'stats-local') {
+      applyTheme('light');
+      document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x.dataset.go === 'stats'));
+      document.querySelectorAll('.view').forEach(el => el.classList.toggle('on', el.dataset.view === 'stats'));
+      switchStorageMode('local');
+      renderAll();
+    } else if (mode === 'stats-webdav') {
+      applyTheme('light');
+      document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x.dataset.go === 'stats'));
+      document.querySelectorAll('.view').forEach(el => el.classList.toggle('on', el.dataset.view === 'stats'));
+      switchStorageMode('webdav');
+      renderAll();
+    } else if (mode === 'stats-cloudflare') {
+      applyTheme('light');
+      document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x.dataset.go === 'stats'));
+      document.querySelectorAll('.view').forEach(el => el.classList.toggle('on', el.dataset.view === 'stats'));
+      switchStorageMode('cloudflare');
+      renderAll();
+    } else if (mode === 'stats-dark') {
+      applyTheme('dark');
+      document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x.dataset.go === 'stats'));
+      document.querySelectorAll('.view').forEach(el => el.classList.toggle('on', el.dataset.view === 'stats'));
+      switchStorageMode('webdav');
+      renderAll();
+    } else if (mode === 'receipt-modal') {
+      applyTheme('light');
+      setTimeout(openExportModal, 60);
+    } else if (mode === 'receipt-modal-dark') {
+      applyTheme('dark');
+      setTimeout(openExportModal, 60);
+    }
   }
 
   // ---------- 应用版本与云端更新控制器（首页浮窗与即时重载） ----------
@@ -3655,7 +3843,7 @@
 
     // 触发仪式感礼花喷发与触感反馈
     if (window.CelebrationFX) window.CelebrationFX.triggerCannons();
-    if (window.Haptic) Haptic.success();
+    Haptic.success();
 
     if (!isNative) {
       if (footer) footer.style.display = 'none';
@@ -3715,11 +3903,12 @@
     if (isUpdating) return;
     isUpdating = true;
 
-    const data = availableUpdate || {
-      version: '1.0.4',
-      downloadUrl: `${CLOUD_PAGES_ORIGIN}/release/daka-1.0.3-android.apk`,
-      apkUrl: `${CLOUD_PAGES_ORIGIN}/release/daka-1.0.3-android.apk`
-    };
+    const data = availableUpdate;
+    if (!data || !(data.apkUrl || data.downloadUrl)) {
+      isUpdating = false;
+      showUpdateError('未获取到有效的更新信息');
+      return;
+    }
 
     const card = $('um-card') || document.querySelector('.um-card');
     if (card) card.classList.add('state-updating');
@@ -3741,7 +3930,7 @@
     setUpdateProgress(0, '正在连接...', '准备更新');
 
     const nativeUpdater = getNativeUpdater();
-    const apkUrl = data.apkUrl || data.downloadUrl || `${CLOUD_PAGES_ORIGIN}/release/daka-1.0.8-android.apk`;
+    const apkUrl = data.apkUrl || data.downloadUrl;
 
     if (nativeUpdater) {
       // 1. Android 原生环境：通过 Capacitor 插件在软件内静默下载至内部 Cache，完成后直接唤起安装
@@ -3765,7 +3954,7 @@
           showUpdateError(err?.error || '网络传输中断');
         });
 
-        await nativeUpdater.startUpdate({ url: apkUrl });
+        await nativeUpdater.startUpdate({ url: apkUrl, sha256: data.apkSha256 || '' });
       } catch (e) {
         showUpdateError(e.message || '原生下载异常');
       }
@@ -3847,7 +4036,11 @@
   // 纯前端静默下载安装包文件到本地 (Blob 方式，绝不跳转浏览器窗口)
   async function downloadApkBlobInApp() {
     const data = availableUpdate || {};
-    const url = data.apkUrl || data.downloadUrl || `${CLOUD_PAGES_ORIGIN}/release/daka-1.0.8-android.apk`;
+    const url = data.apkUrl || data.downloadUrl;
+    if (!url) {
+      toast('未获取到更新地址');
+      return;
+    }
     toast('正在下载安装包...');
 
     try {
@@ -4015,14 +4208,14 @@
     setTimeout(() => ripple.remove(), 550);
   }, { passive: true });
 
-  if (mode === 'update-float') {
+  if (DEV_MODE && mode === 'update-float') {
     availableUpdate = {
       version: '1.0.9',
       buildTime: '2026-10-14 13:45:00',
       releaseNotes: '1. 遵循 oil-tone 规范精简各界面文本与提示信息，去冗去说教\n2. 优化手写向导、结算单导出与设置页交互文案\n3. 完善更新流程各阶段状态与提示反馈'
     };
     showUpdateFloat(availableUpdate);
-  } else if (mode === 'update-modal') {
+  } else if (DEV_MODE && mode === 'update-modal') {
     availableUpdate = {
       version: '1.0.9',
       buildTime: '2026-10-14 13:45:00',

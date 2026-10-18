@@ -13,10 +13,13 @@ import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.security.MessageDigest;
+import java.util.Locale;
 
 @CapacitorPlugin(name = "InAppUpdate")
 public class InAppUpdatePlugin extends Plugin {
@@ -69,6 +72,7 @@ public class InAppUpdatePlugin extends Plugin {
     @PluginMethod
     public void startUpdate(PluginCall call) {
         String downloadUrl = call.getString("url");
+        String expectedSha256 = call.getString("sha256", "");
         if (downloadUrl == null || downloadUrl.trim().isEmpty()) {
             call.reject("更新包下载地址不能为空");
             return;
@@ -82,6 +86,10 @@ public class InAppUpdatePlugin extends Plugin {
             try {
                 Context context = getContext();
                 URL u = new URL(downloadUrl);
+                if (!"https".equalsIgnoreCase(u.getProtocol())) {
+                    call.reject("更新包地址必须使用 https");
+                    return;
+                }
 
                 // 支持最多 5 次 HTTP/HTTPS 及相对路径重定向
                 int redirects = 0;
@@ -90,7 +98,7 @@ public class InAppUpdatePlugin extends Plugin {
                     conn.setRequestMethod("GET");
                     conn.setConnectTimeout(15000);
                     conn.setReadTimeout(30000);
-                    conn.setInstanceFollowRedirects(true);
+                    conn.setInstanceFollowRedirects(false);
                     conn.connect();
 
                     int responseCode = conn.getResponseCode();
@@ -105,6 +113,10 @@ public class InAppUpdatePlugin extends Plugin {
                             return;
                         }
                         u = new URL(u, location);
+                        if (!"https".equalsIgnoreCase(u.getProtocol())) {
+                            call.reject("更新包重定向地址必须使用 https");
+                            return;
+                        }
                         redirects++;
                     } else if (responseCode == HttpURLConnection.HTTP_OK) {
                         break;
@@ -161,6 +173,16 @@ public class InAppUpdatePlugin extends Plugin {
                 conn.disconnect();
                 conn = null;
 
+                // 安装包完整性校验：哈希不匹配时删除并拒绝安装
+                if (expectedSha256 != null && !expectedSha256.isEmpty()) {
+                    String actualSha256 = sha256(apkFile);
+                    if (!actualSha256.equalsIgnoreCase(expectedSha256.trim())) {
+                        apkFile.delete();
+                        call.reject("安装包校验失败，已取消安装");
+                        return;
+                    }
+                }
+
                 // 完成通知
                 JSObject completeData = new JSObject();
                 completeData.put("percent", 100);
@@ -189,6 +211,22 @@ public class InAppUpdatePlugin extends Plugin {
                 try { if (conn != null) conn.disconnect(); } catch (Exception ignored) {}
             }
         }).start();
+    }
+
+    private String sha256(File file) throws Exception {
+        MessageDigest digest = MessageDigest.getInstance("SHA-256");
+        try (InputStream in = new FileInputStream(file)) {
+            byte[] buffer = new byte[8192];
+            int read;
+            while ((read = in.read(buffer)) != -1) {
+                digest.update(buffer, 0, read);
+            }
+        }
+        StringBuilder hex = new StringBuilder();
+        for (byte b : digest.digest()) {
+            hex.append(String.format(Locale.US, "%02x", b));
+        }
+        return hex.toString();
     }
 
     private boolean installApk(Context context, File apkFile) {
