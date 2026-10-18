@@ -1,11 +1,11 @@
 {
   "name": "daka-worklog",
-  "version": "1.0.9",
-  "versionCode": 10009,
-  "buildTime": "2026-10-14 13:45:00",
+  "version": "1.0.10",
+  "versionCode": 10010,
+  "buildTime": "2026-10-18 19:58:31",
   "title": "工时打卡系统",
-  "releaseNotes": "1. 遵循 oil-tone 规范精简各界面文本与提示信息，去冗去说教\n2. 优化手写向导、结算单导出与设置页交互文案\n3. 完善更新流程各阶段状态与提示反馈",
-  "downloadUrl": "https://daka-f3o.pages.dev/release/daka-1.0.9-android.apk",
-  "apkUrl": "https://daka-f3o.pages.dev/release/daka-1.0.9-android.apk",
-  "apkSha256": "c4802985cb4cebaedf1c50e14e1de1ae96693927b04b26bbe4bf88f0fbabdb96"
+  "releaseNotes": "1. 修复系统深色主题下的按钮、周条、向导控件白底与低对比问题\n2. 打磨打卡充能、标签指示器、弹窗关闭与 Toast 动效，补齐减少动态效果\n3. 云端同步改为同步码鉴权，新增默认作息、按需加载与键盘可访问性\n4. 修复同步回滚、删除复活、导出提示与 APK 完整性校验",
+  "downloadUrl": "https://daka-f3o.pages.dev/release/daka-1.0.10-android.apk",
+  "apkUrl": "https://daka-f3o.pages.dev/release/daka-1.0.10-android.apk",
+  "apkSha256": "16dadaa3bc5942a0719170da1c6e433fe060771df73caeadc51f83cd94204323"
 }
