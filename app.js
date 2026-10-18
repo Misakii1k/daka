@@ -175,24 +175,28 @@
   };
 
   // ---------- 主题与字号系统 ----------
+  function resolveTheme(mode) {
+    if (mode === 'light' || mode === 'dark') return mode;
+    return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+
   function applyTheme(mode) {
     const doc = document.documentElement;
+    const resolved = resolveTheme(mode);
     const update = () => {
-      if (mode === 'light') {
-        doc.setAttribute('data-theme', 'light');
-      } else if (mode === 'dark') {
-        doc.setAttribute('data-theme', 'dark');
-      } else {
-        doc.removeAttribute('data-theme');
-      }
+      doc.setAttribute('data-theme', resolved);
       const meta = document.getElementById('meta-theme-color');
-      if (meta) {
-        const isDark = mode === 'dark' || (mode !== 'light' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
-        meta.setAttribute('content', isDark ? '#0a0f1d' : '#ffffff');
-      }
+      if (meta) meta.setAttribute('content', resolved === 'dark' ? '#0a0f1d' : '#ffffff');
     };
-    if (document.startViewTransition) {
-      document.startViewTransition(update);
+    if (document.startViewTransition && document.readyState === 'complete') {
+      try {
+        const transition = document.startViewTransition(update);
+        if (transition && transition.ready) transition.ready.catch(() => {});
+        if (transition && transition.finished) transition.finished.catch(() => {});
+        if (transition && transition.updateCallbackDone) transition.updateCallbackDone.catch(() => {});
+      } catch {
+        update();
+      }
     } else {
       update();
     }
@@ -210,6 +214,14 @@
   // 初始化主题与字号
   applyTheme(settings.themeMode || 'system');
   applyTextSize(settings.textSize || 'standard');
+  if (window.matchMedia) {
+    const themeMedia = window.matchMedia('(prefers-color-scheme: dark)');
+    const onSystemThemeChange = () => {
+      if ((settings.themeMode || 'system') === 'system') applyTheme('system');
+    };
+    if (themeMedia.addEventListener) themeMedia.addEventListener('change', onSystemThemeChange);
+    else if (themeMedia.addListener) themeMedia.addListener(onSystemThemeChange);
+  }
 
   // ---------- 工具 ----------
   const $ = id => document.getElementById(id);
@@ -394,13 +406,27 @@
   };
 
   // 通用动画关闭辅助函数：为元素添加 closing 类播放退场动画后 hidden
+  const closeTimers = new WeakMap();
+  function cancelClose(el) {
+    if (!el) return;
+    const timer = closeTimers.get(el);
+    if (timer) {
+      clearTimeout(timer);
+      closeTimers.delete(el);
+    }
+    el.classList.remove('closing');
+  }
   function animateClose(el, durationMs = 220) {
     if (!el || el.hidden) return;
+    const previous = closeTimers.get(el);
+    if (previous) clearTimeout(previous);
     el.classList.add('closing');
-    setTimeout(() => {
-      el.hidden = true;
+    const timer = setTimeout(() => {
+      if (el.classList.contains('closing')) el.hidden = true;
       el.classList.remove('closing');
+      closeTimers.delete(el);
     }, durationMs);
+    closeTimers.set(el, timer);
   }
 
   // ---------- 打卡提醒与通知服务 (Android 原生本地通知 + Web 降级) ----------
@@ -773,15 +799,15 @@
     if (punchBtn) {
       if (hasRecorded) {
         punchBtn.classList.add('punched');
-        if (chargeFill) chargeFill.style.width = '0%';
-        if (chargeGlow) chargeGlow.style.opacity = '0';
+        if (chargeFill) chargeFill.style.transform = 'scaleX(0)';
+        if (chargeGlow) { chargeGlow.style.opacity = '0'; chargeGlow.style.transform = 'translateX(0)'; }
         if (titleTxt) titleTxt.textContent = `已打卡 · ${fmtH(durMin)} 小时`;
         if (subTxt) subTxt.textContent = `${r.in} – ${r.out}`;
         if (adjBtn) adjBtn.hidden = false;
       } else {
         punchBtn.classList.remove('punched');
-        if (chargeFill) chargeFill.style.width = '0%';
-        if (chargeGlow) chargeGlow.style.opacity = '0';
+        if (chargeFill) chargeFill.style.transform = 'scaleX(0)';
+        if (chargeGlow) { chargeGlow.style.opacity = '0'; chargeGlow.style.transform = 'translateX(0)'; }
         if (titleTxt) titleTxt.textContent = '长按打卡';
         if (subTxt) subTxt.textContent = `${defaultIn} – ${defaultOut}`;
         if (adjBtn) adjBtn.hidden = true;
@@ -966,6 +992,8 @@
     const hasData = !!(r.in || r.out);
     $('e-del').hidden = !hasData;
 
+    cancelClose($('mask'));
+    cancelClose($('sheet'));
     $('mask').hidden = false;
     $('sheet').hidden = false;
     focusFirstIn($('sheet'));
@@ -1158,6 +1186,9 @@
         indicator.style.transform = `translateX(calc(${targetIdx} * (100% + 4px)))`;
       }
     }
+    if (tabsContainer && tabsContainer.classList.contains('initializing')) {
+      requestAnimationFrame(() => tabsContainer.classList.remove('initializing'));
+    }
   }
 
   window.addEventListener('resize', () => {
@@ -1225,6 +1256,8 @@
       });
     });
 
+    cancelClose(sheet);
+    cancelClose(mask);
     mask.hidden = false;
     sheet.hidden = false;
     focusFirstIn(sheet);
@@ -1407,6 +1440,8 @@
       Haptic.tick();
     });
 
+    cancelClose(sheet);
+    cancelClose(mask);
     mask.hidden = false;
     sheet.hidden = false;
     focusFirstIn(sheet);
@@ -1548,6 +1583,8 @@
       };
 
       modal.classList.remove('closing');
+      cancelClose(modal);
+      cancelClose(mask);
       mask.hidden = false;
       modal.hidden = false;
       focusFirstIn(modal);
@@ -2339,6 +2376,7 @@
   let currentExportReport = null;
 
   function openExportModal() {
+    cancelClose($('export-modal'));
     $('export-modal').hidden = false;
     $('em-wage-input').value = settings.wage != null ? settings.wage : 30;
     $('em-name-input').value = settings.userName || '';
@@ -3123,6 +3161,7 @@
         return;
       }
 
+      cancelClose($('wizard-modal'));
       $('wizard-modal').hidden = false;
       initPad();
       focusFirstIn($('wizard-modal'));
@@ -3239,6 +3278,13 @@
       $('wiz-rest-start').value = wizData.lunchStart || '12:00';
       $('wiz-rest-end').value = wizData.lunchEnd || '13:00';
     }
+
+    const wizBody = document.querySelector('.wiz-body');
+    if (wizBody) {
+      wizBody.classList.remove('wiz-step-enter');
+      void wizBody.offsetWidth;
+      wizBody.classList.add('wiz-step-enter');
+    }
   }
 
   function saveAndFinishWizard() {
@@ -3354,6 +3400,11 @@
 
     isPressingPunch = true;
     pressStartTime = performance.now();
+    const chargeWidth = quickPunchBtn ? quickPunchBtn.clientWidth : 0;
+    if (chargeFill) {
+      chargeFill.style.transition = 'none';
+      chargeFill.style.transform = 'scaleX(0)';
+    }
     if (quickPunchBtn) quickPunchBtn.classList.add('charging');
     if (navigator.vibrate) navigator.vibrate(20);
 
@@ -3364,21 +3415,15 @@
       const pct = Math.round(progress * 100);
 
       if (chargeFill) {
-        chargeFill.style.width = `${progress * 100}%`;
-        chargeFill.style.background = 'linear-gradient(90deg, #ea580c 0%, #ff5b2e 100%)';
+        chargeFill.style.transform = `scaleX(${progress})`;
       }
       if (chargeGlow) {
         chargeGlow.style.opacity = progress > 0 ? '1' : '0';
-        chargeGlow.style.left = `calc(${progress * 100}% - 8px)`;
-        chargeGlow.style.boxShadow = '0 0 16px rgba(255, 91, 46, 0.85)';
-      }
-      if (quickPunchBtn) {
-        quickPunchBtn.style.boxShadow = `0 0 ${16 + progress * 10}px rgba(255, 91, 46, ${0.35 + progress * 0.15})`;
+        chargeGlow.style.transform = `translateX(${progress * Math.max(0, chargeWidth - 18)}px)`;
       }
       if (chargePct) {
         chargePct.hidden = false;
         chargePct.textContent = `${pct}%`;
-        chargePct.style.color = '#ff5b2e';
       }
       const titleTxt = $('m3-btn-title');
       if (titleTxt) {
@@ -3409,22 +3454,20 @@
 
     // 平滑回弹退回 0%
     if (chargeFill) {
-      chargeFill.style.transition = 'width 0.22s var(--m3-easing-emphasized)';
-      chargeFill.style.width = '0%';
+      chargeFill.style.transition = 'transform 0.22s var(--m3-easing-emphasized)';
+      chargeFill.style.transform = 'scaleX(0)';
       setTimeout(() => {
         if (chargeFill) {
           chargeFill.style.transition = 'none';
-          chargeFill.style.background = '';
         }
       }, 240);
     }
     if (chargeGlow) {
       chargeGlow.style.opacity = '0';
-      chargeGlow.style.boxShadow = '';
+      chargeGlow.style.transform = 'translateX(0)';
     }
     if (chargePct) {
       chargePct.hidden = true;
-      chargePct.style.color = '';
     }
 
     const k = activeKey();
@@ -3451,9 +3494,6 @@
     }
     if (chargeGlow) {
       chargeGlow.style.boxShadow = '';
-    }
-    if (chargePct) {
-      chargePct.style.color = '';
     }
     const k = activeKey();
     const defaultIn = settings.routineIn || '08:30';
@@ -3695,6 +3735,8 @@
     initDialScroller();
     switchAdjustPart(initialPart);
     updateAdjustSheetUI();
+    cancelClose($('adjust-mask'));
+    cancelClose($('adjust-sheet'));
     $('adjust-mask').hidden = false;
     $('adjust-sheet').hidden = false;
     focusFirstIn($('adjust-sheet'));
@@ -3825,6 +3867,9 @@
     const btnRect = activeBtn.getBoundingClientRect();
     const x = btnRect.left - tabsRect.left + (btnRect.width - 32) / 2;
     indicator.style.setProperty('--tab-indicator-x', x + 'px');
+    if (tabsEl.classList.contains('initializing')) {
+      requestAnimationFrame(() => tabsEl.classList.remove('initializing'));
+    }
 
     if (isClick && direction) {
       if (direction === 'slide-left') {
@@ -3914,7 +3959,7 @@
   });
 
   // 初始化 Tab 滑动指示器位置
-  requestAnimationFrame(updateTabIndicator);
+  updateTabIndicator();
   window.addEventListener('resize', updateTabIndicator);
 
   // 启动页增强退场：进度条填满后退场
@@ -4093,6 +4138,8 @@
 
     // 若当前正在更新，保持更新状态机显示，不重置界面
     if (isUpdating) {
+      cancelClose(modal);
+      cancelClose(mask);
       mask.hidden = false;
       modal.hidden = false;
       focusFirstIn(modal);
@@ -4141,6 +4188,8 @@
       }
     }
 
+    cancelClose(modal);
+    cancelClose(mask);
     mask.hidden = false;
     modal.hidden = false;
     focusFirstIn(modal);
@@ -4543,6 +4592,8 @@
 
   // Google Material 3 全局辐射动态水波纹绑定 — 严格防止溢出
   document.addEventListener('pointerdown', e => {
+    if (prefersReducedMotion()) return;
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
     const host = e.target.closest('.m3-ripple-host, .em-act-btn, .huf-btn, .huf-close, .m3-seg-tab, .adj-btn, .cell, .tool-btn, .black-hero-btn, .tabs button');
     if (!host || host.disabled) return;
     host.style.position = host.style.position || 'relative';

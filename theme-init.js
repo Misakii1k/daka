@@ -3,13 +3,14 @@
 (function () {
   try {
     var raw = localStorage.getItem('worklog-settings');
-    if (!raw) return;
-    var settings = JSON.parse(raw);
-    var mode = settings && settings.themeMode;
-    if (mode === 'dark' || mode === 'light') {
-      document.documentElement.setAttribute('data-theme', mode);
-      var meta = document.querySelector('meta[name="theme-color"]');
-      if (meta) meta.setAttribute('content', mode === 'dark' ? '#0a0f1d' : '#ffffff');
+    var settings = raw ? JSON.parse(raw) : {};
+    var mode = (settings && settings.themeMode) || 'system';
+    var resolved = mode;
+    if (mode !== 'light' && mode !== 'dark') {
+      resolved = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
     }
+    document.documentElement.setAttribute('data-theme', resolved);
+    var meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute('content', resolved === 'dark' ? '#0a0f1d' : '#ffffff');
   } catch (e) {}
 })();

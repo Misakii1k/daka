@@ -120,7 +120,7 @@
           <div class="settings-row theme-settings-row">
             <span>界面主题</span>
             <div class="row-right">
-              <div class="m3-seg-tabs" id="theme-seg-tabs" role="tablist">
+              <div class="m3-seg-tabs initializing" id="theme-seg-tabs" role="tablist">
                 <div class="m3-seg-indicator" id="theme-seg-indicator"></div>
                 <button type="button" class="m3-seg-tab on" data-theme="system">跟随系统</button>
                 <button type="button" class="m3-seg-tab" data-theme="light">浅色</button>
@@ -390,7 +390,7 @@
   </section>
 </main>
 
-<nav class="tabs" role="tablist" aria-label="主导航">
+<nav class="tabs initializing" role="tablist" aria-label="主导航">
   <div class="tab-indicator" id="tab-indicator"></div>
   <button class="on" data-go="today" type="button" role="tab" aria-selected="true" aria-controls="v-today">今天</button>
   <button data-go="records" type="button" role="tab" aria-selected="false" aria-controls="v-records">记录</button>
@@ -531,7 +531,6 @@
   <div class="em-header">
     <button class="em-close" id="em-close" type="button" aria-label="关闭">&times;</button>
     <div class="em-title-wrap">
-      <div class="em-tag">结算导出</div>
       <h2 class="em-title">导出工时结算单</h2>
       <div class="em-sub" id="em-sub-period">2026年10月</div>
     </div>
