@@ -19,6 +19,7 @@
 - **统一写入口**：记录的新增/修改必须调用 `upsertRecord(key, patch)`，删除必须调用 `removeRecord(key)`；禁止直接 `log[key] = ...` 或 `delete log[key]`。写入口会自动维护 `updatedAt` 与删除墓碑。
 - **即时响应**：调用 `saveLog()` 完成持久化后，必须立即执行 `renderAll()`，保障今天、记录、统计三个视图即时同步，严禁依赖页面手动刷新。
 - **同步默认关闭**：`settings.syncEnabled` 默认 `false`；任何自动同步都必须在显式开启后才允许发起。禁止在启动时自动生成同步码或上传数据。
+- **同步码即凭证**：`settings.syncToken` 只在用户开启同步、复制或更换同步码时生成；服务端只保存 SHA-256 派生 ID，禁止把 token 写入日志、备份或云端载荷。
 - **凭据不入备份**：导出 JSON、WebDAV 备份与云端载荷必须经过 `sanitizeSettingsForExport()`，不得包含 `webdav.pass`、`cloudUserId`、`syncToken`。
 
 ## 5. 任务交付与自动推送部署闭环（严禁漏推）

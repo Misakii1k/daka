@@ -2,6 +2,7 @@ const CACHE = 'worklog-1.0.9';
 const ASSETS = [
   './',
   './index.html',
+  './theme-init.js',
   './style.css',
   './app.js',
   './core.js',

@@ -3,8 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#ffffff">
+<meta name="theme-color" content="#ffffff" id="meta-theme-color">
+<meta name="color-scheme" content="light dark">
 <title>工时</title>
+<script src="theme-init.js"></script>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
 <link rel="icon" href="icons/icon-192.png" sizes="192x192">
@@ -199,8 +201,8 @@
         </div>
       </div>
 
-      <!-- 卡片 3：数据存储与多端同步 (当前版本隐藏) -->
-      <div class="settings-card" id="card-storage-sync" hidden>
+      <!-- 卡片 3：数据存储与多端同步 -->
+      <div class="settings-card" id="card-storage-sync">
         <div class="settings-card-head">
           <span class="settings-card-title">数据存储与同步</span>
           <span class="settings-card-desc" id="storage-current-desc">本地存储</span>
@@ -211,6 +213,16 @@
           <button type="button" class="storage-tab on" data-storage="local">本地</button>
           <button type="button" class="storage-tab" data-storage="cloudflare">Cloudflare</button>
           <button type="button" class="storage-tab" data-storage="webdav">WebDAV</button>
+        </div>
+
+        <div class="settings-row" style="padding: 10px 0; border-bottom: 1px solid var(--line);">
+          <span>开启云端同步</span>
+          <div class="row-right">
+            <label class="m3-switch">
+              <input type="checkbox" id="set-sync-enabled">
+              <span class="m3-slider"></span>
+            </label>
+          </div>
         </div>
 
         <!-- 1. 本地存储面板 (默认) -->
@@ -230,24 +242,27 @@
         <!-- 2. Cloudflare 云端面板 -->
         <div class="storage-panel" id="storage-panel-cloudflare" hidden>
           <div class="storage-banner">
-            基于 Cloudflare D1，支持多端数据同步。
+            基于 Cloudflare D1。同步码是唯一凭证，请只保存在自己的设备上。
           </div>
           <div class="storage-form-row">
             <div class="sync-id-row-header">
-              <label for="set-user-id">同步识别码</label>
+              <label for="set-user-id">同步码</label>
               <div class="sync-id-btn-group">
-                <button type="button" class="sync-mini-btn" id="btn-copy-cloud-id" title="复制识别码">复制</button>
-                <button type="button" class="sync-mini-btn" id="btn-gen-cloud-id" title="更换识别码">更换</button>
+                <button type="button" class="sync-mini-btn" id="btn-copy-cloud-id" title="复制同步码">复制</button>
+                <button type="button" class="sync-mini-btn" id="btn-gen-cloud-id" title="生成新的同步码">更换</button>
               </div>
             </div>
-            <input id="set-user-id" type="text" maxlength="32" placeholder="识别码（如 dk-8820）">
-            <div class="storage-hint-text">在其他设备输入相同识别码即可同步</div>
+            <input id="set-user-id" type="text" maxlength="64" placeholder="粘贴其他设备的同步码" autocomplete="off" spellcheck="false">
+            <div class="sync-id-btn-group" style="margin-top:8px;">
+              <button type="button" class="sync-mini-btn" id="btn-use-sync-token">使用此同步码</button>
+            </div>
+            <div class="storage-hint-text">在其他设备粘贴同一同步码即可合并数据；更换后旧同步码的数据不会迁移。</div>
           </div>
           <div class="settings-row" style="padding: 6px 0 10px; border-bottom: none;">
             <span>打卡后自动同步</span>
             <div class="row-right">
               <label class="m3-switch">
-                <input type="checkbox" id="set-auto-cloud-sync" checked>
+                <input type="checkbox" id="set-auto-cloud-sync">
                 <span class="m3-slider"></span>
               </label>
             </div>
@@ -259,13 +274,13 @@
             <button class="ghost" id="btn-cloud-push" type="button" style="flex:1;height:38px;font-size:13px;border-radius:12px;">上传备份</button>
             <button class="ghost" id="btn-cloud-pull" type="button" style="flex:1;height:38px;font-size:13px;border-radius:12px;">恢复备份</button>
           </div>
-          <div class="storage-status-tag" id="cloud-sync-status">云端就绪</div>
+          <div class="storage-status-tag" id="cloud-sync-status">同步未开启</div>
         </div>
 
         <!-- 3. WebDAV 网盘面板 -->
         <div class="storage-panel" id="storage-panel-webdav" hidden>
           <div class="storage-banner">
-            支持坚果云、群晖 NAS、Alist 等 WebDAV 服务。
+            支持坚果云、群晖 NAS、Alist 等 WebDAV 服务，仅支持 https 地址。
           </div>
           <div class="storage-form-row">
             <label for="set-webdav-url">服务器地址</label>
@@ -326,6 +341,18 @@
             </div>
           </div>
           <div class="settings-row">
+            <span>默认上班</span>
+            <div class="row-right">
+              <input type="time" id="set-routine-in" value="08:30" style="width:96px;text-align:center;">
+            </div>
+          </div>
+          <div class="settings-row">
+            <span>默认下班</span>
+            <div class="row-right">
+              <input type="time" id="set-routine-out" value="17:30" style="width:96px;text-align:center;">
+            </div>
+          </div>
+          <div class="settings-row">
             <span>手写识别速度</span>
             <div class="row-right">
               <select id="set-hw-speed">
@@ -363,16 +390,16 @@
   </section>
 </main>
 
-<nav class="tabs">
+<nav class="tabs" role="tablist" aria-label="主导航">
   <div class="tab-indicator" id="tab-indicator"></div>
-  <button class="on" data-go="today" type="button">今天</button>
-  <button data-go="records" type="button">记录</button>
-  <button data-go="stats" type="button">统计</button>
+  <button class="on" data-go="today" type="button" role="tab" aria-selected="true" aria-controls="v-today">今天</button>
+  <button data-go="records" type="button" role="tab" aria-selected="false" aria-controls="v-records">记录</button>
+  <button data-go="stats" type="button" role="tab" aria-selected="false" aria-controls="v-stats">统计</button>
 </nav>
 
 <!-- 编辑某天 -->
 <div class="sheet-mask" id="mask" hidden></div>
-<form class="sheet" id="sheet" hidden>
+<form class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="e-title" hidden>
   <div class="m3-drag-handle"></div>
   <div class="sheet-title" id="e-title"></div>
   <label class="row">上班<input id="e-in" type="time"></label>
@@ -388,7 +415,7 @@
 </form>
 
 <!-- 长辈手写向导弹窗 -->
-<div class="wizard-modal" id="wizard-modal" hidden>
+<div class="wizard-modal" id="wizard-modal" role="dialog" aria-modal="true" aria-labelledby="wiz-title" hidden>
   <div class="wiz-header">
     <button class="wiz-close" id="wiz-close" type="button" aria-label="关闭">&times;</button>
     <button class="wiz-del-shortcut danger" id="wiz-del-btn" type="button" hidden>删除记录</button>
@@ -500,7 +527,7 @@
 </div>
 
 <!-- 薪资结算与多格式导出中心弹窗 -->
-<div class="export-modal" id="export-modal" hidden>
+<div class="export-modal" id="export-modal" role="dialog" aria-modal="true" aria-label="导出工时结算单" hidden>
   <div class="em-header">
     <button class="em-close" id="em-close" type="button" aria-label="关闭">&times;</button>
     <div class="em-title-wrap">
@@ -559,7 +586,7 @@
 
 <!-- 渐进式工时微调抽屉（先选部位，再调数值） -->
 <div class="m3-sheet-mask" id="adjust-mask" hidden></div>
-<div class="m3-bottom-sheet" id="adjust-sheet" hidden>
+<div class="m3-bottom-sheet" id="adjust-sheet" role="dialog" aria-modal="true" aria-label="微调工时" hidden>
   <div class="m3-drag-handle"></div>
   <div class="m3-sheet-header">
     <div class="m3-sheet-title">微调</div>
@@ -639,7 +666,7 @@
 
 <!-- 应用版本更新详情弹窗 -->
 <div class="m3-sheet-mask" id="update-mask" hidden></div>
-<div class="update-modal" id="update-modal" hidden>
+<div class="update-modal" id="update-modal" role="dialog" aria-modal="true" aria-labelledby="um-title" hidden>
   <div class="um-card">
     <div class="um-head">
       <div class="um-hero-icon-wrap">
@@ -708,7 +735,7 @@
 
 <!-- 全局通用自绘下拉抽屉选择器（替代原生select弹窗） -->
 <div class="m3-sheet-mask" id="custom-picker-mask" hidden></div>
-<div class="m3-bottom-sheet custom-picker-sheet" id="custom-picker-sheet" hidden>
+<div class="m3-bottom-sheet custom-picker-sheet" id="custom-picker-sheet" role="dialog" aria-modal="true" aria-labelledby="custom-picker-title" hidden>
   <div class="m3-drag-handle"></div>
   <div class="m3-sheet-header">
     <div class="m3-sheet-title" id="custom-picker-title">请选择</div>
@@ -721,7 +748,7 @@
 
 <!-- 全局通用自绘双滚轮时间抽屉（替代原生type=time时钟弹窗） -->
 <div class="m3-sheet-mask" id="custom-time-mask" hidden></div>
-<div class="m3-bottom-sheet custom-time-sheet" id="custom-time-sheet" hidden>
+<div class="m3-bottom-sheet custom-time-sheet" id="custom-time-sheet" role="dialog" aria-modal="true" aria-labelledby="custom-time-title" hidden>
   <div class="m3-drag-handle"></div>
   <div class="m3-sheet-header">
     <div class="m3-sheet-title" id="custom-time-title">选择时间</div>
@@ -774,7 +801,7 @@
 
 <!-- 全局通用自绘确认模态弹窗（替代原生confirm弹窗） -->
 <div class="m3-sheet-mask" id="custom-confirm-mask" hidden></div>
-<div class="custom-confirm-modal" id="custom-confirm-modal" hidden>
+<div class="custom-confirm-modal" id="custom-confirm-modal" role="dialog" aria-modal="true" aria-labelledby="ccm-title" hidden>
   <div class="ccm-card">
     <div class="ccm-icon-wrap" id="ccm-icon-wrap">
       <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
@@ -788,15 +815,11 @@
   </div>
 </div>
 
-<div class="toast" id="toast" role="status"></div>
+<div class="toast" id="toast" role="status" aria-live="polite" aria-atomic="true"></div>
 
-<script src="nn_weights.js"></script>
-<script src="nn_engine.js"></script>
-<script src="handwriting.js"></script>
 <script src="exporter.js"></script>
 <script src="webdav.js"></script>
 <script src="holidays.js"></script>
-<script src="fx_celebration.js"></script>
 <script src="core.js"></script>
 <script src="app.js"></script>
 </body>

@@ -6,6 +6,7 @@ const path = require('path');
 const targetFiles = [
   'app.js',
   'core.js',
+  'theme-init.js',
   'exporter.js',
   'style.css',
   'index.html',

@@ -83,6 +83,22 @@ export function getUserIdOrNull(request: Request): string | null {
   return userId === 'default_user' ? null : userId;
 }
 
+// 同步码即凭证：服务端只保存 SHA-256 派生出的 user_id，不落库原始 token。
+export async function getUserIdFromAuth(request: Request): Promise<string | null> {
+  const header = request.headers.get('Authorization') || '';
+  if (!header.startsWith('Bearer ')) return null;
+  const token = header.slice(7).trim().toUpperCase();
+  if (!/^[A-Z0-9]{20,64}$/.test(token)) return null;
+  const data = new TextEncoder().encode(token);
+  const digest = await crypto.subtle.digest('SHA-256', data);
+  const bytes = new Uint8Array(digest);
+  let hex = '';
+  for (let i = 0; i < bytes.length; i++) {
+    hex += bytes[i].toString(16).padStart(2, '0');
+  }
+  return hex.slice(0, 32);
+}
+
 export function notFound(): Response {
   return new Response('Not Found', { status: 404 });
 }

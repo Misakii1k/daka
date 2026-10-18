@@ -59,6 +59,7 @@
     reminderOutEnabled: true,
     reminderOutTime: '17:30',
     cloudUserId: '',
+    syncToken: '',
     storageMode: 'local',
     syncEnabled: false,
     autoCloudSync: false,
@@ -184,6 +185,11 @@
       } else {
         doc.removeAttribute('data-theme');
       }
+      const meta = document.getElementById('meta-theme-color');
+      if (meta) {
+        const isDark = mode === 'dark' || (mode !== 'light' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        meta.setAttribute('content', isDark ? '#0a0f1d' : '#ffffff');
+      }
     };
     if (document.startViewTransition) {
       document.startViewTransition(update);
@@ -208,6 +214,141 @@
   // ---------- 工具 ----------
   const $ = id => document.getElementById(id);
   const DEV_MODE = ['localhost', '127.0.0.1'].indexOf(location.hostname) >= 0 || location.protocol === 'file:';
+
+  // ---------- 按需加载：手写识别与庆祝动效不进入首屏关键路径 ----------
+  const scriptCache = {};
+  function loadScript(src) {
+    if (scriptCache[src]) return scriptCache[src];
+    scriptCache[src] = new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = src;
+      script.async = true;
+      script.onload = () => resolve(true);
+      script.onerror = () => reject(new Error('脚本加载失败: ' + src));
+      document.head.appendChild(script);
+    });
+    return scriptCache[src];
+  }
+
+  async function ensureHandwriting() {
+    if (window.HandwritingPad) return true;
+    await loadScript('nn_weights.js');
+    await loadScript('nn_engine.js');
+    await loadScript('handwriting.js');
+    return !!window.HandwritingPad;
+  }
+
+  async function ensureCelebration() {
+    if (window.CelebrationFX) return true;
+    await loadScript('fx_celebration.js');
+    return !!window.CelebrationFX;
+  }
+
+  function prefersReducedMotion() {
+    return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  }
+
+  function runCelebration(type) {
+    if (!type || type === 'none' || prefersReducedMotion()) return;
+    ensureCelebration()
+      .then(() => { if (window.CelebrationFX) window.CelebrationFX.celebrate(type); })
+      .catch(() => {});
+  }
+
+  function runCelebrationCannons() {
+    if (prefersReducedMotion()) return;
+    ensureCelebration()
+      .then(() => { if (window.CelebrationFX) window.CelebrationFX.triggerCannons(); })
+      .catch(() => {});
+  }
+
+  // ---------- 弹窗焦点与键盘可访问性 ----------
+  const focusStack = [];
+  const MODAL_IDS = [
+    'custom-confirm-modal',
+    'wizard-modal',
+    'export-modal',
+    'update-modal',
+    'adjust-sheet',
+    'custom-picker-sheet',
+    'custom-time-sheet',
+    'sheet'
+  ];
+
+  function getVisibleModal() {
+    for (const id of MODAL_IDS) {
+      const el = $(id);
+      if (el && !el.hidden) return el;
+    }
+    return null;
+  }
+
+  function getFocusable(container) {
+    if (!container) return [];
+    const selector = 'button:not([disabled]), [href], input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+    return Array.from(container.querySelectorAll(selector)).filter(el => el.getClientRects().length > 0);
+  }
+
+  function focusFirstIn(container) {
+    if (!container) return;
+    focusStack.push(document.activeElement);
+    const focusable = getFocusable(container);
+    if (focusable.length > 0) {
+      try { focusable[0].focus({ preventScroll: true }); } catch {}
+    } else {
+      container.setAttribute('tabindex', '-1');
+      try { container.focus({ preventScroll: true }); } catch {}
+    }
+  }
+
+  function restoreFocus() {
+    const previous = focusStack.pop();
+    if (previous && document.contains(previous)) {
+      try { previous.focus({ preventScroll: true }); } catch {}
+    }
+  }
+
+  function closeVisibleModal() {
+    const modal = getVisibleModal();
+    if (!modal) return false;
+    switch (modal.id) {
+      case 'wizard-modal': closeWizard(); break;
+      case 'export-modal': closeExportModal(); break;
+      case 'update-modal': closeUpdateModal(); break;
+      case 'adjust-sheet': closeAdjustSheet(); break;
+      case 'custom-picker-sheet': closeCustomPicker(); break;
+      case 'custom-time-sheet': closeCustomTimePicker(); break;
+      case 'sheet': closeEditSheet(); break;
+      case 'custom-confirm-modal': {
+        const cancel = $('ccm-cancel-btn');
+        if (cancel && typeof cancel.onclick === 'function') cancel.onclick();
+        break;
+      }
+      default: return false;
+    }
+    return true;
+  }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+      if (closeVisibleModal()) e.preventDefault();
+      return;
+    }
+    if (e.key !== 'Tab') return;
+    const modal = getVisibleModal();
+    if (!modal) return;
+    const focusable = getFocusable(modal);
+    if (focusable.length === 0) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  });
   const pad = n => String(n).padStart(2, '0');
   const WD = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
   const keyOf = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -827,12 +968,14 @@
 
     $('mask').hidden = false;
     $('sheet').hidden = false;
+    focusFirstIn($('sheet'));
   }
 
   function closeEditSheet() {
     animateClose($('sheet'), 200);
     animateClose($('mask'), 180);
     editingKey = null;
+    restoreFocus();
   }
 
   $('sheet').addEventListener('submit', e => {
@@ -978,7 +1121,6 @@
   if ($('set-reminder-in-time')) $('set-reminder-in-time').value = settings.reminderInTime || '08:20';
   if ($('set-reminder-out')) $('set-reminder-out').checked = settings.reminderOutEnabled !== false;
   if ($('set-reminder-out-time')) $('set-reminder-out-time').value = settings.reminderOutTime || '17:30';
-  if ($('set-user-id')) $('set-user-id').value = settings.cloudUserId || '';
 
   $('set-wage').value = settings.wage != null ? settings.wage : 30;
   if ($('set-hw-speed')) $('set-hw-speed').value = settings.hwSpeed || 'fast';
@@ -1085,11 +1227,13 @@
 
     mask.hidden = false;
     sheet.hidden = false;
+    focusFirstIn(sheet);
   }
 
   function closeCustomPicker() {
     animateClose($('custom-picker-sheet'), 220);
     animateClose($('custom-picker-mask'), 180);
+    restoreFocus();
   }
 
   if ($('custom-picker-close')) $('custom-picker-close').addEventListener('click', closeCustomPicker);
@@ -1265,6 +1409,7 @@
 
     mask.hidden = false;
     sheet.hidden = false;
+    focusFirstIn(sheet);
 
     setTimeout(() => {
       scrollWheelToValue(vh, currentSelectedH, false);
@@ -1280,6 +1425,7 @@
     animateClose($('custom-time-sheet'), 220);
     animateClose($('custom-time-mask'), 180);
     activeTimeConfirmCallback = null;
+    restoreFocus();
   }
 
   if ($('custom-time-close')) $('custom-time-close').addEventListener('click', closeCustomTimePicker);
@@ -1383,6 +1529,7 @@
         confirmBtn.onclick = null;
         cancelBtn.onclick = null;
         mask.onclick = null;
+        restoreFocus();
         resolve(res);
       };
 
@@ -1403,6 +1550,7 @@
       modal.classList.remove('closing');
       mask.hidden = false;
       modal.hidden = false;
+      focusFirstIn(modal);
     });
   };
 
@@ -1540,43 +1688,120 @@
   // 初始化存储分段
   switchStorageMode(settings.storageMode || 'local');
 
-  // Cloudflare 云端数据库同步服务 (D1 极简免配置架构)
-  function ensureCloudUserId() {
-    if (!settings.cloudUserId || !settings.cloudUserId.trim()) {
-      const rand = Math.random().toString(36).substring(2, 6);
-      settings.cloudUserId = `dk-${rand}`;
+  // Cloudflare 云端数据库同步服务（Bearer 同步码，服务端哈希派生用户 ID）
+  const SYNC_ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
+
+  function generateSyncToken() {
+    const bytes = new Uint8Array(20);
+    if (window.crypto && window.crypto.getRandomValues) {
+      window.crypto.getRandomValues(bytes);
+    } else {
+      for (let i = 0; i < bytes.length; i++) bytes[i] = Math.floor(Math.random() * 256);
+    }
+    let bits = 0;
+    let value = 0;
+    let out = '';
+    for (let i = 0; i < bytes.length; i++) {
+      value = (value << 8) | bytes[i];
+      bits += 8;
+      while (bits >= 5) {
+        out += SYNC_ALPHABET[(value >>> (bits - 5)) & 31];
+        bits -= 5;
+      }
+    }
+    if (bits > 0) out += SYNC_ALPHABET[(value << (5 - bits)) & 31];
+    return out;
+  }
+
+  function normalizeSyncToken(value) {
+    return String(value || '')
+      .toUpperCase()
+      .replace(/[^0-9A-Z]/g, '')
+      .replace(/[IL]/g, '1')
+      .replace(/O/g, '0');
+  }
+
+  function formatSyncToken(token) {
+    const clean = normalizeSyncToken(token);
+    return clean.replace(/(.{8})/g, '$1-').replace(/-$/, '');
+  }
+
+  function ensureSyncToken() {
+    if (!settings.syncToken) {
+      settings.syncToken = generateSyncToken();
       saveSet();
     }
-    return settings.cloudUserId;
+    return settings.syncToken;
+  }
+
+  function syncAuthHeaders(extra) {
+    return Object.assign({ 'Authorization': 'Bearer ' + ensureSyncToken() }, extra || {});
+  }
+
+  function updateSyncUI() {
+    const token = settings.syncToken || '';
+    const input = $('set-user-id');
+    if (input) input.value = token ? formatSyncToken(token) : '';
+    const master = $('set-sync-enabled');
+    if (master) master.checked = settings.syncEnabled === true;
+    const auto = $('set-auto-cloud-sync');
+    if (auto) auto.checked = settings.autoCloudSync === true;
+    const statusEl = $('cloud-sync-status');
+    if (statusEl) {
+      if (settings.syncEnabled !== true) statusEl.textContent = '同步未开启';
+      else if (meta.lastSyncAt) statusEl.textContent = `已同步 · ${new Date(meta.lastSyncAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+      else statusEl.textContent = '等待首次同步';
+    }
   }
 
   function getCloudSyncUrl() {
-    const isNative = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) 
-      || location.hostname === 'localhost' 
-      || location.protocol === 'file:'
-      || !location.origin.includes('pages.dev');
+    const isNative = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
     return isNative ? `${CLOUD_PAGES_ORIGIN}/api/sync` : '/api/sync';
   }
 
   if ($('set-user-id')) {
-    $('set-user-id').value = settings.cloudUserId || '';
     $('set-user-id').addEventListener('change', e => {
-      let val = e.target.value.trim();
-      if (!val) val = settings.cloudUserId || '';
-      settings.cloudUserId = val;
-      e.target.value = val;
+      const token = normalizeSyncToken(e.target.value);
+      if (token && token.length < 20) {
+        toast('同步码格式不正确');
+        e.target.value = settings.syncToken ? formatSyncToken(settings.syncToken) : '';
+        return;
+      }
+      settings.syncToken = token;
       saveSet();
+      updateSyncUI();
       Haptic.tick();
+    });
+  }
+
+  if ($('btn-use-sync-token')) {
+    $('btn-use-sync-token').addEventListener('click', () => {
+      const input = $('set-user-id');
+      const token = normalizeSyncToken(input && input.value);
+      if (!token || token.length < 20) {
+        toast('请粘贴有效的同步码');
+        return;
+      }
+      settings.syncToken = token;
+      settings.syncEnabled = true;
+      settings.storageMode = 'cloudflare';
+      settings.autoCloudSync = true;
+      saveSet();
+      switchStorageMode('cloudflare');
+      updateSyncUI();
+      Haptic.success();
+      toast('已使用该同步码，正在同步');
+      syncCloudflareBidirectional(false);
     });
   }
 
   if ($('btn-copy-cloud-id')) {
     $('btn-copy-cloud-id').addEventListener('click', async () => {
-      const code = ensureCloudUserId();
+      const code = formatSyncToken(ensureSyncToken());
       try {
         await navigator.clipboard.writeText(code);
         Haptic.success();
-        toast(`已复制同步码：${code}`);
+        toast('已复制同步码');
       } catch {
         toast(`同步码：${code}`);
       }
@@ -1584,13 +1809,49 @@
   }
 
   if ($('btn-gen-cloud-id')) {
-    $('btn-gen-cloud-id').addEventListener('click', () => {
-      const rand = Math.random().toString(36).substring(2, 6);
-      settings.cloudUserId = `dk-${rand}`;
-      if ($('set-user-id')) $('set-user-id').value = settings.cloudUserId;
+    $('btn-gen-cloud-id').addEventListener('click', async () => {
+      const proceed = await window.customConfirm({
+        title: '更换同步码',
+        message: '更换后，其他设备需要输入新同步码；旧同步码的云端数据不会自动迁移。确定更换？',
+        confirmText: '更换',
+        cancelText: '取消',
+        isDanger: true
+      });
+      if (!proceed) return;
+      settings.syncToken = generateSyncToken();
+      settings.syncEnabled = true;
+      settings.storageMode = 'cloudflare';
+      settings.autoCloudSync = true;
       saveSet();
-      Haptic.tick();
-      toast(`已生成同步码：${settings.cloudUserId}`);
+      switchStorageMode('cloudflare');
+      updateSyncUI();
+      Haptic.success();
+      toast('已生成新的同步码');
+    });
+  }
+
+  if ($('set-sync-enabled')) {
+    $('set-sync-enabled').checked = settings.syncEnabled === true;
+    $('set-sync-enabled').addEventListener('change', e => {
+      if (e.target.checked) {
+        settings.syncEnabled = true;
+        settings.storageMode = 'cloudflare';
+        settings.autoCloudSync = true;
+        ensureSyncToken();
+        saveSet();
+        switchStorageMode('cloudflare');
+        updateSyncUI();
+        Haptic.success();
+        toast('已开启云端同步');
+        syncCloudflareBidirectional(false);
+      } else {
+        settings.syncEnabled = false;
+        settings.autoCloudSync = false;
+        saveSet();
+        updateSyncUI();
+        Haptic.tap();
+        toast('已关闭云端同步');
+      }
     });
   }
 
@@ -1598,7 +1859,6 @@
     $('set-auto-cloud-sync').checked = settings.autoCloudSync === true;
     $('set-auto-cloud-sync').addEventListener('change', e => {
       settings.autoCloudSync = e.target.checked;
-      settings.syncEnabled = e.target.checked;
       saveSet();
       Haptic.tap();
       toast(settings.autoCloudSync ? '已开启自动同步' : '已关闭自动同步');
@@ -1611,8 +1871,11 @@
       if (!silent) toast('云端同步未开启');
       return false;
     }
+    if (!settings.syncToken) {
+      if (!silent) toast('请先生成同步码');
+      return false;
+    }
     const statusEl = $('cloud-sync-status');
-    const userId = ensureCloudUserId();
     const url = getCloudSyncUrl();
     if (statusEl) statusEl.textContent = '正在同步...';
     try {
@@ -1620,7 +1883,7 @@
       let remote = { log: {}, tombstones: {} };
       try {
         const getRes = await fetch(url, {
-          headers: { 'X-User-Id': userId }
+          headers: syncAuthHeaders()
         });
         if (getRes.ok) {
           const getData = await getRes.json();
@@ -1644,10 +1907,7 @@
       // 3. 将合并后的完整数据回写到 D1 云端（不上传设置与任何凭据）
       const postRes = await fetch(url, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-User-Id': userId
-        },
+        headers: syncAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({ log, tombstones })
       });
       if (postRes.ok) {
@@ -1680,17 +1940,17 @@
       if (!silent) toast('云端同步未开启');
       return false;
     }
+    if (!settings.syncToken) {
+      if (!silent) toast('请先生成同步码');
+      return false;
+    }
     const statusEl = $('cloud-sync-status');
-    const userId = ensureCloudUserId();
     const url = getCloudSyncUrl();
     if (statusEl) statusEl.textContent = '正在备份...';
     try {
       const res = await fetch(url, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-User-Id': userId
-        },
+        headers: syncAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({ log, tombstones })
       });
       if (res.ok) {
@@ -1721,13 +1981,16 @@
       toast('云端同步未开启');
       return;
     }
+    if (!settings.syncToken) {
+      toast('请先生成同步码');
+      return;
+    }
     const statusEl = $('cloud-sync-status');
-    const userId = ensureCloudUserId();
     const url = getCloudSyncUrl();
     if (statusEl) statusEl.textContent = '正在读取...';
     try {
       const res = await fetch(url, {
-        headers: { 'X-User-Id': userId }
+        headers: syncAuthHeaders()
       });
       if (res.ok) {
         const data = await res.json();
@@ -1740,6 +2003,8 @@
           replaceState(merged);
           saveLog();
           renderAll();
+          meta.lastSyncAt = Date.now();
+          try { localStorage.setItem(KEY_META, JSON.stringify(meta)); } catch {}
           if (statusEl) statusEl.textContent = `已拉取 · 共 ${cloudCount} 条`;
           Haptic.success();
           toast(`已恢复 ${cloudCount} 条记录`);
@@ -1757,6 +2022,11 @@
   if ($('btn-cloud-sync-onekey')) $('btn-cloud-sync-onekey').addEventListener('click', () => syncCloudflareBidirectional(false));
   if ($('btn-cloud-push')) $('btn-cloud-push').addEventListener('click', () => pushToCloudflare(false));
   if ($('btn-cloud-pull')) $('btn-cloud-pull').addEventListener('click', () => pullFromCloudflare());
+
+  updateSyncUI();
+  if (settings.syncEnabled === true && settings.syncToken) {
+    setTimeout(() => syncCloudflareBidirectional(true), 1200);
+  }
 
   // WebDAV 网盘同步服务
   const webdavConfig = settings.webdav || { url: '', user: '', pass: '', filename: 'worklog-backup.json' };
@@ -1940,6 +2210,38 @@
     settings.std = v; e.target.value = v; saveSet(); renderAll();
     Haptic.tick();
   });
+  if ($('set-routine-in')) {
+    $('set-routine-in').value = settings.routineIn || '08:30';
+    $('set-routine-in').addEventListener('change', e => {
+      const v = e.target.value;
+      if (!isValidTimeStr(v)) {
+        toast('时间格式不正确');
+        e.target.value = settings.routineIn || '08:30';
+        return;
+      }
+      settings.routineIn = v;
+      saveSet();
+      renderAll();
+      Haptic.tick();
+      toast('已更新默认上班时间');
+    });
+  }
+  if ($('set-routine-out')) {
+    $('set-routine-out').value = settings.routineOut || '17:30';
+    $('set-routine-out').addEventListener('change', e => {
+      const v = e.target.value;
+      if (!isValidTimeStr(v)) {
+        toast('时间格式不正确');
+        e.target.value = settings.routineOut || '17:30';
+        return;
+      }
+      settings.routineOut = v;
+      saveSet();
+      renderAll();
+      Haptic.tick();
+      toast('已更新默认下班时间');
+    });
+  }
 
   $('exp').addEventListener('click', () => {
     const payload = {
@@ -1973,7 +2275,8 @@
     setValue('set-webdav-url', settings.webdav && settings.webdav.url);
     setValue('set-webdav-user', settings.webdav && settings.webdav.user);
     setValue('set-webdav-file', settings.webdav && settings.webdav.filename);
-    setValue('set-user-id', settings.cloudUserId || '');
+    setValue('set-routine-in', settings.routineIn);
+    setValue('set-routine-out', settings.routineOut);
     setChecked('set-haptic', settings.hapticEnabled);
     setChecked('set-reminder-in', settings.reminderInEnabled);
     setChecked('set-reminder-out', settings.reminderOutEnabled);
@@ -1982,6 +2285,7 @@
     applyTextSize(settings.textSize || 'standard');
     updateThemeSegUI(settings.themeMode || 'system');
     switchStorageMode('local');
+    updateSyncUI();
   }
 
   $('imp').addEventListener('change', e => {
@@ -2040,10 +2344,12 @@
     $('em-name-input').value = settings.userName || '';
     if ($('em-theme-select')) $('em-theme-select').value = settings.exportTheme || 'receipt';
     refreshExportPreview();
+    focusFirstIn($('export-modal'));
   }
 
   function closeExportModal() {
     animateClose($('export-modal'), 200);
+    restoreFocus();
   }
 
   function refreshExportPreview() {
@@ -2786,34 +3092,58 @@
   $('wiz-rest-start').addEventListener('input', onWizRestTimeInputsChange);
   $('wiz-rest-end').addEventListener('input', onWizRestTimeInputsChange);
 
-  function openWizard(key, startStep = 1) {
-    wizKey = key || activeKey();
-    const r = log[wizKey] || {};
-    wizData.in = r.in || '';
-    wizData.out = r.out || '';
-    wizData.lunchSpan = (r.lunch != null ? r.lunch : settings.lunch || 60);
-    wizData.lunchStart = r.lunchStart || (settings.routineLunch ? settings.routineLunch.start : '12:00');
-    wizData.lunchEnd = r.lunchEnd || (settings.routineLunch ? settings.routineLunch.end : '13:00');
+  async function openWizard(key, startStep = 1) {
+    if (openWizard.loading) return;
+    openWizard.loading = true;
+    try {
+      wizKey = key || activeKey();
+      const r = log[wizKey] || {};
+      wizData.in = r.in || '';
+      wizData.out = r.out || '';
+      wizData.lunchSpan = (r.lunch != null ? r.lunch : settings.lunch || 60);
+      wizData.lunchStart = r.lunchStart || (settings.routineLunch ? settings.routineLunch.start : '12:00');
+      wizData.lunchEnd = r.lunchEnd || (settings.routineLunch ? settings.routineLunch.end : '13:00');
 
-    // 若当前编辑的这天已有记录，展示顶部红色删除按钮
-    const delBtn = $('wiz-del-btn');
-    if (delBtn) {
-      delBtn.hidden = !(r.in || r.out);
+      // 若当前编辑的这天已有记录，展示顶部红色删除按钮
+      const delBtn = $('wiz-del-btn');
+      if (delBtn) {
+        delBtn.hidden = !(r.in || r.out);
+      }
+
+      if (!window.HandwritingPad) toast('正在加载手写识别...');
+      let ready = false;
+      try {
+        ready = await ensureHandwriting();
+      } catch (e) {
+        console.error('[Handwriting] 加载失败:', e);
+      }
+      if (!ready) {
+        toast('手写识别加载失败，请检查网络后重试');
+        wizKey = null;
+        return;
+      }
+
+      $('wizard-modal').hidden = false;
+      initPad();
+      focusFirstIn($('wizard-modal'));
+
+      setTimeout(() => {
+        if (padInstance) padInstance.resize();
+        gotoStep(startStep);
+      }, 50);
+    } catch (e) {
+      console.error('[Wizard] 打开失败:', e);
+      toast('打开手写失败，请重试');
+    } finally {
+      openWizard.loading = false;
     }
-
-    $('wizard-modal').hidden = false;
-    initPad();
-
-    setTimeout(() => {
-      if (padInstance) padInstance.resize();
-      gotoStep(startStep);
-    }, 50);
   }
 
   function closeWizard() {
     clearTimeout(autoAdvanceTimer);
     animateClose($('wizard-modal'), 200);
     wizKey = null;
+    restoreFocus();
   }
 
   // 向导内快捷删除已有记录
@@ -3143,9 +3473,7 @@
 
     // 触发庆祝动效（彩礼烟花 / 金钞飘落）
     const fxType = settings.celebrationFx || 'confetti';
-    if (window.CelebrationFX && fxType !== 'none') {
-      window.CelebrationFX.celebrate(fxType);
-    }
+    runCelebration(fxType);
 
     const durH = fmtH(worked(r));
     toast(`已打卡 · ${durH} 小时`);
@@ -3369,11 +3697,13 @@
     updateAdjustSheetUI();
     $('adjust-mask').hidden = false;
     $('adjust-sheet').hidden = false;
+    focusFirstIn($('adjust-sheet'));
   }
 
   function closeAdjustSheet() {
     animateClose($('adjust-sheet'), 200);
     animateClose($('adjust-mask'), 180);
+    restoreFocus();
   }
 
   function shiftTimeMinutes(timeStr, deltaMinutes) {
@@ -3464,9 +3794,7 @@
     closeAdjustSheet();
     Haptic.success();
     toast(`工时已更新：${fmtH(worked(r))} 小时`);
-    if (window.CelebrationFX && settings.celebrationFx !== 'none') {
-      window.CelebrationFX.celebrate(settings.celebrationFx || 'confetti');
-    }
+    runCelebration(settings.celebrationFx || 'confetti');
     autoSyncByStorageMode();
   });
 
@@ -3511,6 +3839,15 @@
     }
   }
 
+  function setActiveTab(activeButton) {
+    document.querySelectorAll('.tabs button').forEach(x => {
+      const active = x === activeButton;
+      x.classList.toggle('on', active);
+      x.setAttribute('aria-selected', active ? 'true' : 'false');
+      x.tabIndex = active ? 0 : -1;
+    });
+  }
+
   document.querySelector('.tabs').addEventListener('click', e => {
     const b = e.target.closest('[data-go]');
     if (!b) return;
@@ -3520,7 +3857,7 @@
     const direction = targetIndex > currentViewIndex ? 'slide-left' : (targetIndex < currentViewIndex ? 'slide-right' : '');
     currentViewIndex = targetIndex;
 
-    document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x === b));
+    setActiveTab(b);
     document.querySelectorAll('.view').forEach(v => {
       const isTarget = v.dataset.view === targetView;
       v.classList.remove('on', 'slide-left', 'slide-right');
@@ -3534,6 +3871,21 @@
     window.scrollTo(0, 0);
   });
 
+  document.querySelector('.tabs').addEventListener('keydown', e => {
+    if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].indexOf(e.key) < 0) return;
+    const tabs = Array.from(document.querySelectorAll('.tabs button'));
+    const index = tabs.indexOf(document.activeElement);
+    if (index < 0) return;
+    e.preventDefault();
+    let next = index;
+    if (e.key === 'ArrowRight') next = (index + 1) % tabs.length;
+    else if (e.key === 'ArrowLeft') next = (index - 1 + tabs.length) % tabs.length;
+    else if (e.key === 'Home') next = 0;
+    else if (e.key === 'End') next = tabs.length - 1;
+    tabs[next].focus();
+    tabs[next].click();
+  });
+
   function renderAll() {
     renderToday();
     renderWeek();
@@ -3542,8 +3894,7 @@
   }
 
   renderAll();
-
-  // 本地数据读取异常时给出一次提示（损坏原文已隔离保存）
+  setActiveTab(document.querySelector('.tabs button.on'));
   if (storageCorrupt) {
     setTimeout(() => toast('本地数据读取异常，已保留损坏副本'), 1200);
   }
@@ -3744,6 +4095,7 @@
     if (isUpdating) {
       mask.hidden = false;
       modal.hidden = false;
+      focusFirstIn(modal);
       return;
     }
 
@@ -3791,6 +4143,7 @@
 
     mask.hidden = false;
     modal.hidden = false;
+    focusFirstIn(modal);
   }
 
   function closeUpdateModal() {
@@ -3798,6 +4151,7 @@
     const mask = $('update-mask');
     animateClose(modal, 240);
     animateClose(mask, 220);
+    restoreFocus();
   }
 
   // 灵动进度条插值平滑驱动器 (Google Material 3 物理阻尼)
@@ -3842,7 +4196,7 @@
     if (successBox) successBox.hidden = false;
 
     // 触发仪式感礼花喷发与触感反馈
-    if (window.CelebrationFX) window.CelebrationFX.triggerCannons();
+    runCelebrationCannons();
     Haptic.success();
 
     if (!isNative) {

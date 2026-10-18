@@ -4,7 +4,7 @@
 import {
   Env,
   corsHeaders,
-  getUserIdOrNull,
+  getUserIdFromAuth,
   handleOptions,
   isEnabled,
   isPlainObject,
@@ -27,9 +27,9 @@ export async function onRequestGet(context: { request: Request; env: Env }): Pro
   const { request, env } = context;
   if (!isEnabled(env, 'SYNC_ENABLED')) return notFound();
   const cors = corsHeaders(request, env);
-  const userId = getUserIdOrNull(request);
+  const userId = await getUserIdFromAuth(request);
   if (!userId) {
-    return jsonResponse({ ok: false, error: '缺少有效用户标识' }, 400, cors);
+    return jsonResponse({ ok: false, error: '同步码无效' }, 401, cors);
   }
 
   if (!env.DB) {
@@ -114,9 +114,9 @@ export async function onRequestPost(context: { request: Request; env: Env }): Pr
   const { request, env } = context;
   if (!isEnabled(env, 'SYNC_ENABLED')) return notFound();
   const cors = corsHeaders(request, env);
-  const userId = getUserIdOrNull(request);
+  const userId = await getUserIdFromAuth(request);
   if (!userId) {
-    return jsonResponse({ ok: false, error: '缺少有效用户标识' }, 400, cors);
+    return jsonResponse({ ok: false, error: '同步码无效' }, 401, cors);
   }
 
   if (!env.DB) {
